@@ -73,16 +73,19 @@
             background-color: #1e293b;
             border-radius: 8px;
             border: 1px solid #334155;
+            width: 100%;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
             font-size: 0.9rem;
+            table-layout: auto;
         }
         th, td {
             padding: 12px 15px;
             border-bottom: 1px solid #334155;
+            white-space: nowrap;
         }
         th {
             background-color: #0f172a;
@@ -109,12 +112,16 @@
             margin-bottom: 15px;
             display: none;
         }
+        .server-type {
+            color: #38bdf8;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Arras Status Monitor</h1>
+        <h1>Arras Status</h1>
         <div class="meta-info" id="update-timer">Connecting to stream...</div>
 
         <div id="error-banner" class="error-msg"></div>
@@ -148,6 +155,7 @@
                 <thead>
                     <tr>
                         <th>Node Name</th>
+                        <th style="min-width: 140px;">Server Type</th>
                         <th>Status</th>
                         <th>Clients</th>
                         <th>MSPT</th>
@@ -157,7 +165,7 @@
                 </thead>
                 <tbody id="table-body">
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #94a3b8;">Waiting for initial data load...</td>
+                        <td colspan="7" style="text-align: center; color: #94a3b8;">Waiting for initial data load...</td>
                     </tr>
                 </tbody>
             </table>
@@ -167,7 +175,83 @@
     <script>
         const url = 'https://qrp6ujau11f36bnm-c.uvwx.xyz:8443/2222/status';
         
-        // Dom Elements
+        // Server Map Config
+        const serverTypeMap = {
+            "contabo-sgp-e0z": "Sandbox",
+            "contabo-sgp-e5nexus": "Nexus",
+            "contabo-sgp-f": "FFA",
+            "contabo-sgp-z": "Sandbox",
+            "extravm-sgp-%": "Offline/Unknown",
+            "hetzner-fsn-%": "Offline/Unknown",
+            "hetzner-fsn-af": "FFA Assault",
+            "hetzner-fsn-am2c": "2 TDM Maze Assault",
+            "hetzner-fsn-am2m": "2 TDM Maze Assault",
+            "hetzner-fsn-e0z": "Sandbox",
+            "hetzner-fsn-e5forge": "FFA Forge",
+            "hetzner-fsn-e5limbo": "Limbo",
+            "hetzner-fsn-e5nexus": "Nexus",
+            "hetzner-fsn-e7manhuntmf": "FFA Assault Tag Manhunt",
+            "hetzner-fsn-e8tartarus": "Assault Tartarus",
+            "hetzner-fsn-e9labyrinth": "Assault Tag Labyrinth",
+            "hetzner-fsn-f": "FFA",
+            "hetzner-fsn-gam2": "Growth 2 TDM Maze Assault",
+            "hetzner-fsn-gf": "Growth FFA",
+            "hetzner-fsn-m2ax16bunker": "2 TDM Maze Assault Bunker",
+            "hetzner-fsn-w33olds5forge": "FFA Old Forge",
+            "hetzner-fsn-w33olds9labyrinth": "Assault 3 Team Tag Old Labyrinth",
+            "hetzner-fsn-w33oldscdreadnoughts": "Assault 3 Team Tag Old Dreadnoughts",
+            "hetzner-fsn-z": "Sandbox",
+            "incubatec-sgp-%": "Offline/Unknown",
+            "ovh-hil-%": "Offline/Unknown",
+            "ovh-syd-af": "FFA Assault",
+            "ovh-syd-am2ax19acropolis": "2 TDM Maze Acropolis",
+            "ovh-syd-e0z": "Sandbox",
+            "ovh-syd-e5nexus": "Nexus",
+            "ovh-syd-f": "FFA",
+            "ovh-syd-gae7manhuntmf": "Growth FFA Assault Tag Manhunt",
+            "ovh-syd-gom3t": "Growth 3 TDM Maze 3 Team Tag",
+            "ovh-syd-m4": "4 TDM Maze",
+            "ovh-syd-w33olds5forge": "FFA Old Forge",
+            "ovh-syd-w33olds9labyrinth": "Assault 3 Team Tag Old Labyrinth",
+            "ovh-syd-w33oldscdreadnoughts": "Assault 3 Team Tag Old Dreadnoughts",
+            "ovh-syd-z": "Sandbox",
+            "wsi-kci-%": "Offline/Unknown",
+            "wsi-kci-e0z": "Sandbox",
+            "wsi-kci-e5forge": "FFA Forge",
+            "wsi-kci-e5nexus": "Nexus",
+            "wsi-kci-e7manhuntmf": "FFA Assault Tag Manhunt",
+            "wsi-kci-e9labyrinth": "Assault Tag Labyrinth",
+            "wsi-kci-f": "FFA",
+            "wsi-kci-gamf": "Growth Maze FFA Assault",
+            "wsi-kci-gm2ax33yins4yang": "Growth 2 TDM Maze Assault Yin & Yang",
+            "wsi-kci-z": "Sandbox"
+        };
+
+        // Resolved server description type with added logic for 3-letter node overrides
+        function getServerType(nodeKey, nodeCode, displayName) {
+            // Check if the actual display name or fallback key is a 3-letter abbreviation (e.g. "SGP", "FSN", "KCI")
+            const nameToCheck = displayName || nodeKey || "";
+            if (nameToCheck.trim().length === 3) {
+                return "Sandbox";
+            }
+
+            const targetStr = nodeCode || nodeKey;
+
+            if (serverTypeMap[targetStr]) {
+                return serverTypeMap[targetStr];
+            }
+            
+            for (const key in serverTypeMap) {
+                if (key.includes('%')) {
+                    const prefix = key.split('%')[0];
+                    if (targetStr.startsWith(prefix)) {
+                        return serverTypeMap[key];
+                    }
+                }
+            }
+            return 'Unknown Mode';
+        }
+
         const tableBody = document.getElementById('table-body');
         const updateTimer = document.getElementById('update-timer');
         const errorBanner = document.getElementById('error-banner');
@@ -204,11 +288,9 @@
             let onlineCount = 0;
             let offlineCount = 0;
 
-            // Loop through all dynamic keys in the status object
             Object.keys(cachedStatusData).forEach(key => {
                 const node = cachedStatusData[key];
                 
-                // Track metrics
                 if (node.online) {
                     onlineCount++;
                     totalClients += node.clients || 0;
@@ -216,19 +298,22 @@
                     offlineCount++;
                 }
 
-                // Apply UI filters
                 if (hideHiddenCheck.checked && node.hidden) return;
                 if (hideOfflineCheck.checked && !node.online) return;
 
-                // Process readable variables
                 const uptimeHours = node.uptime ? (node.uptime / 3600).toFixed(2) : '0.00';
                 const statusBadge = node.online 
                     ? `<span class="badge badge-online">ONLINE</span>` 
                     : `<span class="badge badge-offline">OFFLINE</span>`;
+                
+                // Pass the custom custom display node name as a third argument to enforce 3-character checking
+                const nodeName = node.name || key;
+                const serverType = getServerType(key, node.code, nodeName);
 
                 htmlRows += `
                     <tr>
-                        <td><strong>${node.name || key}</strong></td>
+                        <td><strong>${nodeName}</strong></td>
+                        <td class="server-type">${serverType}</td>
                         <td>${statusBadge}</td>
                         <td>${node.clients !== undefined ? node.clients : '-'}</td>
                         <td>${node.mspt !== undefined ? node.mspt + 'ms' : '-'}</td>
@@ -238,20 +323,16 @@
                 `;
             });
 
-            // Update top metric boxes
             statClients.textContent = totalClients;
             statOnline.textContent = onlineCount;
             statOffline.textContent = offlineCount;
 
-            // Update layout frame
-            tableBody.innerHTML = htmlRows || `<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No nodes match current filter options.</td></tr>`;
+            tableBody.innerHTML = htmlRows || `<tr><td colspan="7" style="text-align: center; color: #94a3b8;">No nodes match current filter options.</td></tr>`;
         }
 
-        // Re-render when checkboxes are toggled without refetching immediately
         hideHiddenCheck.addEventListener('change', renderData);
         hideOfflineCheck.addEventListener('change', renderData);
 
-        // Run immediately on page load, then poll every 2000ms
         updateDashboard();
         setInterval(updateDashboard, 2000);
     </script>
