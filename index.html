@@ -227,29 +227,44 @@
             "wsi-kci-z": "Sandbox"
         };
 
-        // Resolved server description type with added logic for 3-letter node overrides
+        // Resolved server description type with custom logic overrides
         function getServerType(nodeKey, nodeCode, displayName) {
-            // Check if the actual display name or fallback key is a 3-letter abbreviation (e.g. "SGP", "FSN", "KCI")
-            const nameToCheck = displayName || nodeKey || "";
-            if (nameToCheck.trim().length === 3) {
-                return "Sandbox";
-            }
-
-            const targetStr = nodeCode || nodeKey;
-
-            if (serverTypeMap[targetStr]) {
-                return serverTypeMap[targetStr];
-            }
+            const nameToCheck = (displayName || nodeKey || "").trim();
             
-            for (const key in serverTypeMap) {
-                if (key.includes('%')) {
-                    const prefix = key.split('%')[0];
-                    if (targetStr.startsWith(prefix)) {
-                        return serverTypeMap[key];
+            // Rule 1: #eux is always Limbo
+            if (nameToCheck === "#eux") {
+                return "Limbo";
+            }
+
+            let baseType = "Unknown Mode";
+
+            // Rule 2: Check if name length is exactly 3 characters (Sandbox rule)
+            if (nameToCheck.length === 3) {
+                baseType = "Sandbox";
+            } else {
+                // Otherwise fall back to map matching
+                const targetStr = nodeCode || nodeKey;
+                if (serverTypeMap[targetStr]) {
+                    baseType = serverTypeMap[targetStr];
+                } else {
+                    for (const key in serverTypeMap) {
+                        if (key.includes('%')) {
+                            const prefix = key.split('%')[0];
+                            if (targetStr.startsWith(prefix)) {
+                                baseType = serverTypeMap[key];
+                                break;
+                            }
+                        }
                     }
                 }
             }
-            return 'Unknown Mode';
+
+            // Rule 3: Append (shiny) if the node name is #wv, #cv, #ev, or #av
+            if (["#wv", "#cv", "#ev", "#av"].includes(nameToCheck)) {
+                return `${baseType} (shiny)`;
+            }
+
+            return baseType;
         }
 
         const tableBody = document.getElementById('table-body');
@@ -306,7 +321,6 @@
                     ? `<span class="badge badge-online">ONLINE</span>` 
                     : `<span class="badge badge-offline">OFFLINE</span>`;
                 
-                // Pass the custom custom display node name as a third argument to enforce 3-character checking
                 const nodeName = node.name || key;
                 const serverType = getServerType(key, node.code, nodeName);
 
