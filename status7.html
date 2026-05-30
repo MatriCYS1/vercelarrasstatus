@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arras Servers Status</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            color: #f8fafc;
+        }
+        .meta-info {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .card {
+            background-color: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+        .card-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        /* Controls */
+        .controls {
+            background-color: #1e293b;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #334155;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        /* Table Styling */
+        .table-wrapper {
+            overflow-x: auto;
+            background-color: #1e293b;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #334155;
+        }
+        th {
+            background-color: #0f172a;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #24334d;
+        }
+        /* Status Badges */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .badge-online { background-color: #065f46; color: #34d399; }
+        .badge-offline { background-color: #991b1b; color: #f87171; }
+        .error-msg {
+            color: #f87171;
+            background-color: #7f1d1d;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>System Status Monitor</h1>
+        <div class="meta-info" id="update-timer">Connecting to stream...</div>
+
+        <div id="error-banner" class="error-msg"></div>
+
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-title">Active Clients</div>
+                <div id="stat-clients" class="card-value">0</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Servers Online</div>
+                <div id="stat-online" class="card-value" style="color: #34d399;">0</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Servers Offline</div>
+                <div id="stat-offline" class="card-value" style="color: #f87171;">0</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <label class="checkbox-container">
+                <input type="checkbox" id="hide-hidden" checked> Hide Hidden Nodes
+            </label>
+            <label class="checkbox-container">
+                <input type="checkbox" id="hide-offline"> Hide Offline Nodes
+            </label>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Node Name</th>
+                        <th>Status</th>
+                        <th>Clients</th>
+                        <th>MSPT</th>
+                        <th>Uptime (hrs)</th>
+                        <th>Host Code</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #94a3b8;">Waiting for initial data load...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const url = 'https://qrp6ujau11f36bnm-c.uvwx.xyz:8443/2222/status';
+        
+        // Dom Elements
+        const tableBody = document.getElementById('table-body');
+        const updateTimer = document.getElementById('update-timer');
+        const errorBanner = document.getElementById('error-banner');
+        const hideHiddenCheck = document.getElementById('hide-hidden');
+        const hideOfflineCheck = document.getElementById('hide-offline');
+        
+        const statClients = document.getElementById('stat-clients');
+        const statOnline = document.getElementById('stat-online');
+        const statOffline = document.getElementById('stat-offline');
+
+        let cachedStatusData = {};
+
+        // Dictionary to translate dynamic codes or outdated fallback names to correct Arras titles
+        const MODE_TRANSLATIONS = {
+            "em": "Arms Race 4TDM Mothership",
+            "2 TDM Maze Assault": "Arms Race 4TDM Mothership", // Catch historical overrides
+            "Offline/Unknown": "Custom Server/Event Mode",
+            "Unknown Mode": "Special Event Mode"
+        };
+
+        async function updateDashboard() {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Server returned HTTP ${response.status}`);
+                
+                const data = await response.json();
+                // Fallback checks if API payload is nested differently
+                const statusObj = data.status || data.data || (data.ok ? data : null);
+                
+                if (!statusObj) throw new Error("Invalid JSON data structure received.");
+                
+                cachedStatusData = statusObj;
+                errorBanner.style.display = 'none';
+                renderData();
+            } catch (err) {
+                errorBanner.textContent = `Stream Error: ${err.message}. Ensure endpoint CORS headers allow connections.`;
+                errorBanner.style.display = 'block';
+            }
+            updateTimer.textContent = `Last refreshed: ${new Date().toLocaleTimeString()}`;
+        }
+
+        function renderData() {
+            let htmlRows = '';
+            let totalClients = 0;
+            let onlineCount = 0;
+            let offlineCount = 0;
+
+            Object.keys(cachedStatusData).forEach(key => {
+                // Clean up broken key properties introduced by line breaks and text artifacts
+                let cleanKey = key.replace(/\/gi, '').trim();
+                if (!cleanKey || cleanKey === "ONLINE") return; 
+
+                const node = cachedStatusData[key];
+                if (!node || typeof node !== 'object') return; // Prevent breakdown on malformed/corrupted rows
+                
+                // Track metrics safely
+                if (node.online) {
+                    onlineCount++;
+                    totalClients += (parseInt(node.clients) || 0);
+                } else {
+                    offlineCount++;
+                }
+
+                // Apply UI filters
+                if (hideHiddenCheck.checked && node.hidden) return;
+                if (hideOfflineCheck.checked && !node.online) return;
+
+                // Dynamic naming resolution: Check translation map for raw key OR the server-reported name
+                let resolvedName = node.name || cleanKey;
+                if (MODE_TRANSLATIONS[cleanKey]) {
+                    resolvedName = MODE_TRANSLATIONS[cleanKey];
+                } else if (MODE_TRANSLATIONS[node.name]) {
+                    resolvedName = MODE_TRANSLATIONS[node.name];
+                }
+                // Fallback catch: If the API replaced the code key entirely with the text name string
+                else if (cleanKey.toLowerCase().includes("mothership") || cleanKey.toLowerCase().includes("arms race")) {
+                    resolvedName = "Arms Race 4TDM Mothership";
+                }
+
+                // Extract clean host codes safely (handling missing object properties gracefully)
+                let displayCode = node.code || '-';
+                if (displayCode === '-' && cleanKey.length > 4 && !cleanKey.includes(" ")) {
+                    displayCode = cleanKey; // Handle cases where host code mutated into the lookup key slot
+                }
+
+                // Process readable variables
+                const uptimeHours = node.uptime ? (parseFloat(node.uptime) / 3600).toFixed(2) : '0.00';
+                const statusBadge = node.online 
+                    ? `<span class="badge badge-online">ONLINE</span>` 
+                    : `<span class="badge badge-offline">OFFLINE</span>`;
+
+                htmlRows += `
+                    <tr>
+                        <td><strong>${resolvedName}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td>${node.clients !== undefined ? node.clients : '-'}</td>
+                        <td>${node.mspt !== undefined ? node.mspt + 'ms' : '-'}</td>
+                        <td>${node.online ? uptimeHours : '-'}</td>
+                        <td style="color: #94a3b8; font-family: monospace;">${displayCode}</td>
+                    </tr>
+                `;
+            });
+
+            // Update top metric boxes
+            statClients.textContent = totalClients;
+            statOnline.textContent = onlineCount;
+            statOffline.textContent = offlineCount;
+
+            // Update layout frame
+            tableBody.innerHTML = htmlRows || `<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No nodes match current filter options.</td></tr>`;
+        }
+
+        // Re-render when checkboxes are toggled without refetching immediately
+        hideHiddenCheck.addEventListener('change', renderData);
+        hideOfflineCheck.addEventListener('change', renderData);
+
+        // Run immediately on page load, then poll every 2000ms
+        updateDashboard();
+        setInterval(updateDashboard, 2000);
+    </script>
+</body>
+</html>
