@@ -13,6 +13,9 @@
         .children {
             margin-left: 20px;
         }
+        .file {
+            margin: 4px 0;
+        }
     </style>
 </head>
 <body>
@@ -23,25 +26,14 @@
         const OWNER = "MatriCYS1";
         const REPO = "vercelarrasstatus";
 
-        function getFileLink(item) {
-            const name = item.name.toLowerCase();
+        function getType(name) {
+            name = name.toLowerCase();
 
-            // viewable in browser
-            if (
-                name.endsWith(".png") ||
-                name.endsWith(".jpg") ||
-                name.endsWith(".jpeg") ||
-                name.endsWith(".gif") ||
-                name.endsWith(".webp") ||
-                name.endsWith(".txt") ||
-                name.endsWith(".pdf") ||
-                name.endsWith(".html")
-            ) {
-                return item.download_url;
-            }
+            if (name.match(/\.(png|jpg|jpeg|gif|webp)$/)) return "image";
+            if (name.match(/\.(txt|pdf|html)$/)) return "view";
+            if (name.match(/\.(mp3|wav|ogg|m4a)$/)) return "audio";
 
-            // fallback (GitHub page view)
-            return item.html_url;
+            return "other";
         }
 
         async function loadFolder(path = "", container) {
@@ -71,15 +63,33 @@
 
                     div.appendChild(folder);
                     div.appendChild(children);
+
                 } else {
-                    const file = document.createElement("div");
+                    const type = getType(item.name);
+                    const fileDiv = document.createElement("div");
+                    fileDiv.className = "file";
 
-                    const link = getFileLink(item);
+                    if (type === "audio") {
+                        fileDiv.innerHTML = `
+                            🎵 ${item.name}<br>
+                            <audio controls>
+                                <source src="${item.download_url}">
+                                Your browser does not support audio.
+                            </audio>
+                        `;
+                    }
+                    else if (type === "image") {
+                        fileDiv.innerHTML = `
+                            🖼️ ${item.name}<br>
+                            <img src="${item.download_url}" style="max-width:200px;">
+                        `;
+                    }
+                    else {
+                        fileDiv.innerHTML =
+                            `📄 <a href="${item.download_url}" target="_blank">${item.name}</a>`;
+                    }
 
-                    file.innerHTML =
-                        `📄 <a href="${link}" target="_blank">${item.name}</a>`;
-
-                    div.appendChild(file);
+                    div.appendChild(fileDiv);
                 }
             }
 
