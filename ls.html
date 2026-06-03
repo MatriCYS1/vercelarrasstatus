@@ -1,102 +1,90 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>LS</title>
-    <style>
-        body {
-            font-family: sans-serif;
-        }
-        .folder {
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .children {
-            margin-left: 20px;
-        }
-        .file {
-            margin: 4px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>Files</h1>
-    <div id="files"></div>
+<script>
+    const OWNER = "MatriCYS1";
+    const REPO = "vercelarrasstatus";
 
-    <script>
-        const OWNER = "MatriCYS1";
-        const REPO = "vercelarrasstatus";
+    function getType(name) {
+        name = name.toLowerCase();
 
-        function getType(name) {
-            name = name.toLowerCase();
+        if (name.match(/\.(png|jpg|jpeg|gif|webp)$/)) return "image";
+        if (name.match(/\.(txt|pdf)$/)) return "view";
+        if (name.match(/\.(mp3|wav|ogg|m4a)$/)) return "audio";
+        if (name.endsWith(".html")) return "html";
 
-            if (name.match(/\.(png|jpg|jpeg|gif|webp)$/)) return "image";
-            if (name.match(/\.(txt|pdf|html)$/)) return "view";
-            if (name.match(/\.(mp3|wav|ogg|m4a)$/)) return "audio";
+        return "other";
+    }
 
-            return "other";
-        }
+    function getVercelUrl(path) {
+        // IMPORTANT: change this if your Vercel URL is different
+        return `https://${REPO}.vercel.app/${path}`;
+    }
 
-        async function loadFolder(path = "", container) {
-            const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`;
-            const response = await fetch(url);
-            const items = await response.json();
+    async function loadFolder(path = "", container) {
+        const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`;
+        const response = await fetch(url);
+        const items = await response.json();
 
-            const div = document.createElement("div");
+        const div = document.createElement("div");
 
-            for (const item of items) {
-                if (item.type === "dir") {
-                    const folder = document.createElement("div");
-                    folder.className = "folder";
-                    folder.textContent = "📁 " + item.name;
+        for (const item of items) {
+            if (item.type === "dir") {
 
-                    const children = document.createElement("div");
-                    children.className = "children";
-                    children.style.display = "none";
+                const folder = document.createElement("div");
+                folder.className = "folder";
+                folder.textContent = "📁 " + item.name;
 
-                    folder.onclick = async () => {
-                        if (children.innerHTML === "") {
-                            await loadFolder(item.path, children);
-                        }
-                        children.style.display =
-                            children.style.display === "none" ? "block" : "none";
-                    };
+                const children = document.createElement("div");
+                children.className = "children";
+                children.style.display = "none";
 
-                    div.appendChild(folder);
-                    div.appendChild(children);
-
-                } else {
-                    const type = getType(item.name);
-                    const fileDiv = document.createElement("div");
-                    fileDiv.className = "file";
-
-                    if (type === "audio") {
-                        fileDiv.innerHTML = `
-                            🎵 ${item.name}<br>
-                            <audio controls>
-                                <source src="${item.download_url}">
-                                Your browser does not support audio.
-                            </audio>
-                        `;
+                folder.onclick = async () => {
+                    if (children.innerHTML === "") {
+                        await loadFolder(item.path, children);
                     }
-                    else if (type === "image") {
-                        fileDiv.innerHTML = `
-                            🖼️ ${item.name}<br>
-                            <img src="${item.download_url}" style="max-width:200px;">
-                        `;
-                    }
-                    else {
-                        fileDiv.innerHTML =
-                            `📄 <a href="${item.download_url}" target="_blank">${item.name}</a>`;
-                    }
+                    children.style.display =
+                        children.style.display === "none" ? "block" : "none";
+                };
 
-                    div.appendChild(fileDiv);
+                div.appendChild(folder);
+                div.appendChild(children);
+
+            } else {
+
+                const type = getType(item.name);
+                const fileDiv = document.createElement("div");
+                fileDiv.className = "file";
+
+                if (type === "audio") {
+                    fileDiv.innerHTML = `
+                        🎵 ${item.name}<br>
+                        <audio controls src="${item.download_url}"></audio>
+                    `;
                 }
-            }
 
-            container.appendChild(div);
+                else if (type === "image") {
+                    fileDiv.innerHTML = `
+                        🖼️ ${item.name}<br>
+                        <img src="${item.download_url}" style="max-width:200px;">
+                    `;
+                }
+
+                else if (type === "html") {
+                    const link = getVercelUrl(item.path);
+
+                    fileDiv.innerHTML =
+                        `🌐 <a href="${link}" target="_blank">${item.name}</a>`;
+                }
+
+                else {
+                    fileDiv.innerHTML =
+                        `📄 <a href="${item.download_url}" target="_blank">${item.name}</a>`;
+                }
+
+                div.appendChild(fileDiv);
+            }
         }
 
-        loadFolder("", document.getElementById("files"));
-    </script>
-</body>
-</html>
+        container.appendChild(div);
+    }
+
+    loadFolder("", document.getElementById("files"));
+</script>
