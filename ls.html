@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LS</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        .folder {
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .children {
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Files</h1>
+    <div id="files"></div>
+
+    <script>
+        const OWNER = "MatriCYS1";
+        const REPO = "vercelarrasstatus";
+
+        async function loadFolder(path = "", container) {
+            const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`;
+            const response = await fetch(url);
+            const items = await response.json();
+
+            const div = document.createElement("div");
+
+            for (const item of items) {
+                if (item.type === "dir") {
+                    const folder = document.createElement("div");
+                    folder.className = "folder";
+                    folder.textContent = "📁 " + item.name;
+
+                    const children = document.createElement("div");
+                    children.className = "children";
+                    children.style.display = "none";
+
+                    folder.onclick = async () => {
+                        if (children.innerHTML === "") {
+                            await loadFolder(item.path, children);
+                        }
+                        children.style.display =
+                            children.style.display === "none" ? "block" : "none";
+                    };
+
+                    div.appendChild(folder);
+                    div.appendChild(children);
+                } else {
+                    const file = document.createElement("div");
+                    file.innerHTML =
+                        `📄 <a href="${item.download_url}" target="_blank">${item.name}</a>`;
+                    div.appendChild(file);
+                }
+            }
+
+            container.appendChild(div);
+        }
+
+        loadFolder("", document.getElementById("files"));
+    </script>
+</body>
+</html>
