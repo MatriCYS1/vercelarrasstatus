@@ -1,3 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LS</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        .folder {
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .children {
+            margin-left: 20px;
+        }
+        .file {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Files</h1>
+    <div id="files"></div>
 <script>
     const OWNER = "MatriCYS1";
     const REPO = "vercelarrasstatus";
@@ -88,3 +111,5 @@
 
     loadFolder("", document.getElementById("files"));
 </script>
+</body>
+</html>
