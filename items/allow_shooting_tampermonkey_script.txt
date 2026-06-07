@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net
 // @version      1.0
 // @description  allow shooting script
-// @author       MatriCYS-1
+// @author       Unknown
 // @match        https://arras.io*
 // @grant        none
 // @run-at       document-start
