@@ -79,6 +79,13 @@ let spawnTime = Date.now();
 let otherPlayers = [];
 let otherChat = {};
 
+// Performance Tracking Variables
+let lastFrameTime = performance.now();
+let fps = 0;
+let frameTimeMs = 0;
+let framesThisPeriod = 0;
+let lastFpsUpdate = performance.now();
+
 let socket;
 function connect() {
   const root = location.hostname === "localhost" ? "ws://localhost:1999" : "wss://partykit.fibonnaci314.partykit.dev";
@@ -325,11 +332,22 @@ function renderUI() {
   ctx.fillText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
   
+  // Performance Indicators Stack
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "right";
+
+  // 1. Speed (gu/s)
   ctx.strokeText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
   ctx.fillText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
+
+  // 2. FPS (16px above gu/s)
+  ctx.strokeText(fps + " fps", canvas.width - 4, canvas.height - 406);
+  ctx.fillText(fps + " fps", canvas.width - 4, canvas.height - 406);
+
+  // 3. MS Frame Time (16px above FPS)
+  ctx.strokeText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
+  ctx.fillText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
 
   ctx.strokeStyle = "#484848";
   ctx.fillStyle = "#dbdbdb90";
@@ -390,6 +408,18 @@ function renderWalls() {
 }
 
 function frame() {
+  // Update frametime and FPS counters
+  const now = performance.now();
+  frameTimeMs = now - lastFrameTime;
+  lastFrameTime = now;
+
+  framesThisPeriod++;
+  if (now - lastFpsUpdate >= 500) { // Updates FPS twice per second
+    fps = Math.round((framesThisPeriod * 1000) / (now - lastFpsUpdate));
+    framesThisPeriod = 0;
+    lastFpsUpdate = now;
+  }
+
   updateCanvas();
 
   renderBackground();
