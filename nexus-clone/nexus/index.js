@@ -463,10 +463,10 @@ function renderUI() {
   ctx.strokeText(playersHere.toLocaleString() + " players here", canvas.width / 2, 80);
   ctx.fillText(playersHere.toLocaleString() + " players here", canvas.width / 2, 80);
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
-  ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
-  ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
-  ctx.strokeText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
-  ctx.fillText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.strokeText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
+  ctx.fillText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
+  ctx.strokeText("Shift or Ctrl to fast travel. Alt to change your name.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.fillText("Shift or Ctrl to fast travel. Alt to change your name.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
