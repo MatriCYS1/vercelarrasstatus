@@ -1,11 +1,9 @@
+<!DOCTYPE html>
 <html lang="en">
-  
-<!-- Mirrored from vercel-tinkering.vercel.app/nexus/index.html by HTTrack Website Copier/3.x [XR&CO'2014], Wed, 10 Jun 2026 11:51:47 GMT -->
-<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=utf-8" /><!-- /Added by HTTrack -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Nexus Game</title>
     <script src="index.js" defer></script>
     <style>
       #flex {
@@ -17,6 +15,7 @@
         height: 100vh;
         justify-content: center;
         align-items: center;
+        pointer-events: none; /* Let clicks pass through to the canvas */
       }
       input {
         z-index: 1;
@@ -30,17 +29,15 @@
         outline: none;
         transform: translateY(-7vh);
         font-family: "Segoe UI", Arial, sans-serif;
-        font-weight: 600;
-        padding: 1px 8px;
+        padding: 0 10px;
+        pointer-events: auto; /* Re-enable clicks for typing */
       }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <canvas></canvas>
     <div id="flex">
-      <input hidden>
+        <input type="text" id="chatInput" hidden />
     </div>
-  </body>
-
-<!-- Mirrored from vercel-tinkering.vercel.app/nexus/index.html by HTTrack Website Copier/3.x [XR&CO'2014], Wed, 10 Jun 2026 11:51:47 GMT -->
+</body>
 </html>
