@@ -228,14 +228,14 @@ function collide() {
           const delty = ry - player.y;
           if (Math.abs(deltx) > 3.8 || Math.abs(delty) > 3.8) continue;
           if (Math.abs(deltx) > Math.abs(delty)) {
-            player.vx *= -0.5;
+            player.vx *= -1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
             if (deltx < 0) {
               player.x = rx + 3.800001;
             } else {
               player.x = rx - 3.800001;
             }
           } else {
-            player.vy *= -0.5;
+            player.vy *= -1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
             if (delty < 0) {
               player.y = ry + 3.800001;
             } else {
@@ -301,7 +301,7 @@ function renderPlayer(p) {
   let colorId;
   if (safeName === "Testing") {
     colorId = 5;
-  } else if (safeName === "desmos") {
+  } else if (safeName === "h#shtag") {
     colorId = 6;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
