@@ -298,8 +298,14 @@ function renderBackground() {
 function renderPlayer(p) {
   const safeName = String(p.name ?? "unknown");
   
-  const colorId = safeName === "Testing" ? 5 : safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
-  const colorId = safeName === "h#shtag" ? 6 : safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  let colorId;
+  if (safeName === "Testing") {
+    colorId = 5;
+  } else if (safeName === "h#shtag") {
+    colorId = 6;
+  } else {
+    colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  }
   
   const colors = [
     ["#3ca4cb", "#446d7d"],
@@ -310,6 +316,7 @@ function renderPlayer(p) {
     ["#b9e87e", "#76885e"],
     ["#F199C3", "#a66183"]
   ][colorId];
+  
   const playerCoord = localize(p);
   const baseSize = resize(0.8);
   const forwardX = Math.cos(p.angle);
@@ -338,18 +345,27 @@ function renderPlayer(p) {
 }
 
 function renderPlayerUI(p) {
-  // Safeguard: Coerce any value to an explicit string to prevent .split() crash loops
   const safeName = String(p.name ?? "unknown");
 
-  const colorId = safeName === "Testing" ? 5 : safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  let colorId;
+  if (safeName === "Testing") {
+    colorId = 5;
+  } else if (safeName === "h#shtag") {
+    colorId = 6;
+  } else {
+    colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  }
+
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
     ["#e03e41", "#854446"],
     ["#cc669c", "#7d546a"],
     ["#fdf380", "#918d5f"],
-    ["#b9e87e", "#76885e"]
+    ["#b9e87e", "#76885e"],
+    ["#F199C3", "#a66183"]
   ][colorId];
+
   const coord = localize(p);
   const baseSize = resize(1.3);
   ctx.fillStyle = "#ffffff";
@@ -369,7 +385,6 @@ function renderPlayerUI(p) {
     ctx.globalAlpha = Math.max(0, Math.min(index ? 1 : offset, 1, 50 - (Date.now() - message.timestamp) / 200));
     const y = coord.y - baseSize - resize(0.85 + 0.9 * Math.max(0, index - 1 + offset));
     
-    // Ensure text display safe coercion on rendering loop elements
     const renderedMsg = String(message.message);
     const width = ctx.measureText(renderedMsg).width;
     
