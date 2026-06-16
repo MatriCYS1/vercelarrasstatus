@@ -1,9 +1,11 @@
-<!DOCTYPE html>
 <html lang="en">
+  
+
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus</title>
+    <title>Nexus Document</title>
     <script src="index.js" defer></script>
     <style>
       #flex {
@@ -15,7 +17,6 @@
         height: 100vh;
         justify-content: center;
         align-items: center;
-        pointer-events: none; /* Let clicks pass through to the canvas */
       }
       input {
         z-index: 1;
@@ -29,15 +30,16 @@
         outline: none;
         transform: translateY(-7vh);
         font-family: "Segoe UI", Arial, sans-serif;
-        padding: 0 10px;
-        pointer-events: auto; /* Re-enable clicks for typing */
+        font-weight: 600;
+        padding: 1px 8px;
       }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <canvas></canvas>
     <div id="flex">
-        <input type="text" id="chatInput" hidden />
+      <input hidden>
     </div>
-</body>
+  </body>
+
 </html>
