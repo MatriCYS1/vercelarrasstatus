@@ -130,13 +130,6 @@ let arrasCorruptReplacements = [
   ["", 28]
 ];
 
-// Performance Tracking Variables
-let lastFrameTime = performance.now();
-let fps = 0;
-let frameTimeMs = 0;
-let framesThisPeriod = 0;
-let lastFpsUpdate = performance.now();
-
 let socket;
 function connect() {
   const root = location.hostname === "localhost" ? "ws://localhost:1999" : "wss://partykit.fibonnaci314.partykit.dev";
@@ -370,7 +363,7 @@ function renderPortal(portal) {
     e: ["#e03e41", "#854446"],
     a: ["#cc669c", "#7d546a"],
     o: ["#fdf380", "#918d5f"]
-  ][portal.server[0]];
+  }[portal.server[0]];
   ctx.globalAlpha = 0.3;
   ctx.beginPath();
   ctx.arc(coord.x, coord.y, baseSize * (1.05 + (Math.cos(time / 280) + 1) * 0.1), 0, Math.PI * 2);
@@ -470,39 +463,22 @@ function renderUI() {
   ctx.strokeText(playersHere.toLocaleString() + " players here", canvas.width / 2, 80);
   ctx.fillText(playersHere.toLocaleString() + " players here", canvas.width / 2, 80);
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
-  ctx.strokeText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
-  ctx.fillText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
-  ctx.strokeText("Shift or Ctrl to fast travel. Alt to change your name.", canvas.width / 2, canvas.height * 0.6 + 25);
-  ctx.fillText("Shift or Ctrl to fast travel. Alt to change your name.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
+  ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
+  ctx.strokeText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.fillText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
-  
-  // Performance Indicators Stack Setup
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "right";
-  
-  // 1. Total Global Players Label
-  ctx.strokeText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 442);
-  ctx.fillText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 442);
-  
-  // 2. MS Frame Time (Shifted cleanly above FPS)
-  ctx.strokeText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
-  ctx.fillText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
-
-  // 3. FPS (Shifted cleanly above Speed)
-  ctx.strokeText(fps + " fps", canvas.width - 4, canvas.height - 406);
-  ctx.fillText(fps + " fps", canvas.width - 4, canvas.height - 406);
-
-  // 4. Speed (Base layer above the minimap border layout)
+  ctx.strokeText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 406);
+  ctx.fillText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 406);
   ctx.strokeText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
   ctx.fillText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
-  
-  // Glitched text banner layout positioning shift up to clear the indicators
   ctx.lineWidth = 5.5;
   ctx.font = "600 24px 'Segoe UI', Arial, sans-serif";
-  ctx.strokeText(arrasCorruptReplacements.map((char, i) => char[1] <= 0 ? "arras.io"[i] : char[0]).join(""), canvas.width - 4, canvas.height - 465);
-  ctx.fillText(arrasCorruptReplacements.map((char, i) => char[1] <= 0 ? "arras.io"[i] : char[0]).join(""), canvas.width - 4, canvas.height - 465);
-  
+  ctx.strokeText(arrasCorruptReplacements.map((char, i) => char[1] <= 0 ? "arras.io"[i] : char[0]).join(""), canvas.width - 4, canvas.height - 427);
+  ctx.fillText(arrasCorruptReplacements.map((char, i) => char[1] <= 0 ? "arras.io"[i] : char[0]).join(""), canvas.width - 4, canvas.height - 427);
   ctx.lineWidth = 8;
   ctx.font = "600 36px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "center";
@@ -583,18 +559,6 @@ function renderRing() {
 }
 
 function frame() {
-  // Performance measurement engine step
-  const now = performance.now();
-  frameTimeMs = now - lastFrameTime;
-  lastFrameTime = now;
-
-  framesThisPeriod++;
-  if (now - lastFpsUpdate >= 500) { // Updates smoothly 2 times per second
-    fps = Math.round((framesThisPeriod * 1000) / (now - lastFpsUpdate));
-    framesThisPeriod = 0;
-    lastFpsUpdate = now;
-  }
-
   updateCanvas();
 
   if (teleported) return ctx.fillStyle = "#000000" && ctx.fillRect(0, 0, canvas.width, canvas.height);
