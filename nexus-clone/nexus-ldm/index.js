@@ -296,17 +296,19 @@ function renderBackground() {
 }
 
 function renderPlayer(p) {
-  // Safeguard: Coerce any value to an explicit string to prevent .split() crash loops
   const safeName = String(p.name ?? "unknown");
   
   const colorId = safeName === "Testing" ? 5 : safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  const colorId = safeName === "h#shtag" ? 6 : safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
     ["#e03e41", "#854446"],
     ["#cc669c", "#7d546a"],
     ["#fdf380", "#918d5f"],
-    ["#b9e87e", "#76885e"]
+    ["#b9e87e", "#76885e"],
+    ["#F199C3", "#a66183"]
   ][colorId];
   const playerCoord = localize(p);
   const baseSize = resize(0.8);
