@@ -6,7 +6,7 @@ const map = [
   ".1.ccc.1.....1.eee.1.111111111111111.",
   ".1.ccc.1.....1.eee.1.1.............1.",
   ".1.ccc.1.....1.eee.1.1.!.........!.1.",
-  ".1.....1.....1.....1.1..!.......!..1.",
+  ".1.....1.....1.....1.1 Regel u.......!..1.",
   ".111.111.....111.111.1...!.....!...1.",
   "...1.1.........1.1...1....!...!....1.",
   ".111.111.....111.111.1.....!.!.....1.",
@@ -14,7 +14,7 @@ const map = [
   ".1.bbb.1111111.bbb.111.....!.!.....1.",
   ".1.bbb..././...bbb...!....!...!....1.",
   ".1.bbb.1111111.bbb.111...!.....!...1.",
-  ".1.....1.....1.....1.1..!.......!..1.",
+  ".1.....1.....1.....1.1 Regel u.......!..1.",
   ".111.111.....111.111.1.!.........!.1.",
   "...1.1.........1.1...1.............1.",
   "...1/1.........1/1...111111111111111.",
@@ -54,15 +54,47 @@ document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
 });
 
+// Chat Listener Event (Only runs if a chat input element exists in HTML)
 document.addEventListener("keydown", (ev) => {
-  if (ev.key !== "Enter") return;
+  if (ev.key !== "Enter" || !input) return;
   if (input.hidden) {
     input.hidden = false;
     input.focus();
   } else {
-    socket.send(JSON.stringify({ type: "chat", msg: input.value }));
+    if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "chat", msg: input.value }));
+    }
     input.hidden = true;
     input.value = "";
+  }
+});
+
+// Alt Key Listener Event - Updates profile nickname options
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Alt" && document.activeElement !== input) {
+    ev.preventDefault(); // Blocks default browser menu system activations
+    
+    const NAME_LIMIT = 16;
+    let newName = prompt(`Enter your new nickname (Max ${NAME_LIMIT} characters):`, player.name);
+    
+    if (newName !== null) {
+      newName = newName.trim();
+      
+      if (newName.length > NAME_LIMIT) {
+        alert(`Name too long! It has been shortened to ${NAME_LIMIT} characters.`);
+        newName = newName.slice(0, NAME_LIMIT);
+      }
+      
+      if (newName === "") newName = "unknown";
+
+      player.name = newName;
+      localStorage.setItem("x-arrasVerifyName", newName);
+      
+      if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "name", name: newName }));
+      }
+      console.log(`Name set to: ${newName}`);
+    }
   }
 });
 
@@ -237,8 +269,8 @@ function renderBackground() {
   ctx.globalAlpha = 1;
 }
 
-function renderPlayer(player) {
-  const colorId = player.name === "Testing" ? 5 : player.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+function renderPlayer(p) {
+  const colorId = p.name === "Testing" ? 5 : p.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
@@ -247,12 +279,12 @@ function renderPlayer(player) {
     ["#fdf380", "#918d5f"],
     ["#b9e87e", "#76885e"]
   ][colorId];
-  const playerCoord = localize(player);
+  const playerCoord = localize(p);
   const baseSize = resize(0.8);
-  const forwardX = Math.cos(player.angle);
-  const forwardY = Math.sin(player.angle);
-  const sideX = Math.sin(player.angle);
-  const sideY = -Math.cos(player.angle);
+  const forwardX = Math.cos(p.angle);
+  const forwardY = Math.sin(p.angle);
+  const sideX = Math.sin(p.angle);
+  const sideY = -Math.cos(p.angle);
   ctx.lineWidth = resize(0.2);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -274,8 +306,8 @@ function renderPlayer(player) {
   ctx.fill();
 }
 
-function renderPlayerUI(player) {
-  const colorId = player.name === "Testing" ? 5 : player.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+function renderPlayerUI(p) {
+  const colorId = p.name === "Testing" ? 5 : p.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
@@ -284,7 +316,7 @@ function renderPlayerUI(player) {
     ["#fdf380", "#918d5f"],
     ["#b9e87e", "#76885e"]
   ][colorId];
-  const coord = localize(player);
+  const coord = localize(p);
   const baseSize = resize(1.3);
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "#484848";
@@ -292,11 +324,11 @@ function renderPlayerUI(player) {
   ctx.font = "600 " + resize(0.6) + "px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.strokeText(player.name, coord.x, coord.y - baseSize);
-  ctx.fillText(player.name, coord.x, coord.y - baseSize);
-  const chat = otherChat[player.id];
+  ctx.strokeText(p.name, coord.x, coord.y - baseSize);
+  ctx.fillText(p.name, coord.x, coord.y - baseSize);
+  const chat = otherChat[p.id];
   if (!chat?.length) return;
-  otherChat[player.id] = otherChat[player.id].filter((t) => Date.now() - t.timestamp < 10000);
+  otherChat[p.id] = otherChat[p.id].filter((t) => Date.now() - t.timestamp < 10000);
   const lastMessage = chat[0].timestamp;
   const offset = Math.min(1, (Date.now() - lastMessage) / 200);
   chat.forEach((message, index) => {
@@ -324,14 +356,14 @@ function renderUI() {
   ctx.strokeStyle = "#484848";
   ctx.lineWidth = 5;
   ctx.font = "600 22px 'Segoe UI', Arial, sans-serif";
-  
+    
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
   ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
   ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
-  ctx.strokeText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
-  ctx.fillText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.strokeText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.fillText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
-  
+    
   // Performance Indicators Stack
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
@@ -341,11 +373,11 @@ function renderUI() {
   ctx.strokeText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
   ctx.fillText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
 
-  // 2. FPS (16px above gu/s)
+  // 2. FPS
   ctx.strokeText(fps + " fps", canvas.width - 4, canvas.height - 406);
   ctx.fillText(fps + " fps", canvas.width - 4, canvas.height - 406);
 
-  // 3. MS Frame Time (16px above FPS)
+  // 3. MS Frame Time
   ctx.strokeText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
   ctx.fillText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
 
@@ -354,7 +386,7 @@ function renderUI() {
   ctx.lineWidth = 4;
   ctx.strokeRect(canvas.width - 378, canvas.height - 378, 370, 370);
   ctx.fillRect(canvas.width - 378, canvas.height - 378, 370, 370);
-  
+    
   for (let x = 0; x < 37; x ++) {
     for (let y = 0; y < 37; y ++) {
       const tile = map[y][x];
@@ -372,7 +404,7 @@ function renderUI() {
       }
     }
   }
-  
+    
   [player, ...otherPlayers].forEach((thisPlayer) => {
     const playerTX = ((thisPlayer.x + 111) / 6);
     const playerTY = ((thisPlayer.y + 111) / 6);
@@ -408,13 +440,12 @@ function renderWalls() {
 }
 
 function frame() {
-  // Update frametime and FPS counters
   const now = performance.now();
   frameTimeMs = now - lastFrameTime;
   lastFrameTime = now;
 
   framesThisPeriod++;
-  if (now - lastFpsUpdate >= 500) { // Updates FPS twice per second
+  if (now - lastFpsUpdate >= 500) { 
     fps = Math.round((framesThisPeriod * 1000) / (now - lastFpsUpdate));
     framesThisPeriod = 0;
     lastFpsUpdate = now;
