@@ -1,4 +1,4 @@
-// 37x37
+// 37x37 Map alignment matrix
 const map = [
   ".....................................",
   ".1111111.....1111111.................",
@@ -6,8 +6,8 @@ const map = [
   ".1.ccc.1.....1.eee.1.111111111111111.",
   ".1.ccc.1.....1.eee.1.1.............1.",
   ".1.ccc.1.....1.eee.1.1.!.........!.1.",
-  ".1.....1.....1.....1.1..!.......!..1.",
-  ".111.111.....111.111.1...!.....!...1.",
+  ".1.....1.....1.....1.1 Regel u.......!..1.",
+  ".111.111.....111.111.1...!..1..1...!...1.",
   "...1.1.........1.1...1....!...!....1.",
   ".111.111.....111.111.1.....!.!.....1.",
   ".1.....1.....1.....1.1......!......1.",
@@ -270,7 +270,10 @@ function renderBackground() {
 }
 
 function renderPlayer(p) {
-  const colorId = p.name === "Testing" ? 5 : p.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  // Safeguard: Coerce any value to an explicit string to prevent .split() crash loops
+  const safeName = String(p.name ?? "unknown");
+  
+  const colorId = safeName === "Testing" ? 5 : safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
@@ -307,7 +310,10 @@ function renderPlayer(p) {
 }
 
 function renderPlayerUI(p) {
-  const colorId = p.name === "Testing" ? 5 : p.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  // Safeguard: Coerce any value to an explicit string to prevent .split() crash loops
+  const safeName = String(p.name ?? "unknown");
+
+  const colorId = safeName === "Testing" ? 5 : safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
@@ -324,8 +330,8 @@ function renderPlayerUI(p) {
   ctx.font = "600 " + resize(0.6) + "px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.strokeText(p.name, coord.x, coord.y - baseSize);
-  ctx.fillText(p.name, coord.x, coord.y - baseSize);
+  ctx.strokeText(safeName, coord.x, coord.y - baseSize);
+  ctx.fillText(safeName, coord.x, coord.y - baseSize);
   const chat = otherChat[p.id];
   if (!chat?.length) return;
   otherChat[p.id] = otherChat[p.id].filter((t) => Date.now() - t.timestamp < 10000);
@@ -356,14 +362,14 @@ function renderUI() {
   ctx.strokeStyle = "#484848";
   ctx.lineWidth = 5;
   ctx.font = "600 22px 'Segoe UI', Arial, sans-serif";
-    
+      
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
   ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
   ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
   ctx.strokeText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.fillText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
-    
+      
   // Performance Indicators Stack
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
@@ -386,7 +392,7 @@ function renderUI() {
   ctx.lineWidth = 4;
   ctx.strokeRect(canvas.width - 378, canvas.height - 378, 370, 370);
   ctx.fillRect(canvas.width - 378, canvas.height - 378, 370, 370);
-    
+      
   for (let x = 0; x < 37; x ++) {
     for (let y = 0; y < 37; y ++) {
       const tile = map[y][x];
@@ -404,8 +410,10 @@ function renderUI() {
       }
     }
   }
-    
+      
   [player, ...otherPlayers].forEach((thisPlayer) => {
+    // Safeguard lookup coordinates for mini-map dot tracking
+    const safeThisName = String(thisPlayer.name ?? "unknown");
     const playerTX = ((thisPlayer.x + 111) / 6);
     const playerTY = ((thisPlayer.y + 111) / 6);
     ctx.globalAlpha = 1;
