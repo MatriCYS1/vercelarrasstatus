@@ -533,6 +533,15 @@ function renderUI() {
   // 4. Speed
   ctx.strokeText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
   ctx.fillText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
+  
+  // Noclip UI Status Tag (rendered on the top left layer boundary corner of the minimap border framework)
+  if (noclip) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#e03e41";
+    ctx.strokeText("NOCLIP: ACTIVE", canvas.width - 378, canvas.height - 390);
+    ctx.fillText("NOCLIP: ACTIVE", canvas.width - 378, canvas.height - 390);
+    ctx.textAlign = "right"; // reset back to right default alignment
+  }
 
   // Glitched text banner layout positioning shift up to clear the indicators
   ctx.lineWidth = 5.5;
@@ -558,16 +567,6 @@ function renderUI() {
   ctx.lineWidth = 4;
   ctx.strokeRect(canvas.width - 378, canvas.height - 378, 370, 370);
   ctx.fillRect(canvas.width - 378, canvas.height - 378, 370, 370);
-  
-  // Extremely small status circle indicator at the top-left corner of the minimap border framework
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "#484848";
-  ctx.fillStyle = noclip ? "#e03e41" : "#8abc3f"; // Red if ON, Green if OFF
-  ctx.beginPath();
-  ctx.arc(canvas.width - 366, canvas.height - 366, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
   for (let x = 0; x < 37; x ++) {
     for (let y = 0; y < 37; y ++) {
       const tile = map[y][x];
