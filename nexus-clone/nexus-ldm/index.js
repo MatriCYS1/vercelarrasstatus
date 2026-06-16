@@ -54,7 +54,7 @@ const keys = {};
 document.addEventListener("keydown", (ev) => {
   keys[ev.key.toLowerCase()] = true;
   
-  // Toggle Noclip when pressing 'N' (only when chat input isn't open)
+  // Toggle Noclip when pressing 'N' (only when chat input isn't open/focused)
   if (ev.key.toLowerCase() === 'n' && document.activeElement !== input) {
     noclip = !noclip;
     console.log("Noclip mode:", noclip ? "ENABLED" : "DISABLED");
@@ -65,14 +65,14 @@ document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
 });
 
-// 1. Chat listener with an added message character limit
+// 1. Chat listener with safe guard checks
 document.addEventListener("keydown", (ev) => {
-  if (ev.key !== "Enter") return;
+  if (ev.key !== "Enter" || !input) return;
   if (input.hidden) {
     input.hidden = false;
     input.focus();
   } else {
-    const MSG_LIMIT = 80; // <--- CHANGE CHAT CHARACTER LIMIT HERE
+    const MSG_LIMIT = 80; 
     let msg = input.value;
 
     if (msg.length > MSG_LIMIT) {
@@ -80,18 +80,20 @@ document.addEventListener("keydown", (ev) => {
       msg = msg.slice(0, MSG_LIMIT);
     }
 
-    socket.send(JSON.stringify({ type: "chat", msg: msg }));
+    if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "chat", msg: msg }));
+    }
     input.hidden = true;
     input.value = "";
   }
 });
 
-// 2. Alt key listener for changing name with a character limit
+// 2. Alt key listener for changing name with safe checks
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Alt" && document.activeElement !== input) {
-    ev.preventDefault(); // Stop default browser menu popup
+    ev.preventDefault(); 
     
-    const NAME_LIMIT = 16; // <--- CHANGE NAME CHARACTER LIMIT HERE
+    const NAME_LIMIT = 16; 
     let newName = prompt(`Enter your new nickname (Max ${NAME_LIMIT} chars):`, player.name);
     
     if (newName !== null) {
@@ -199,13 +201,13 @@ function updateCanvas() {
   canvas.height = dpr * innerHeight;
   canvas.style = `
   
-  left: 0;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  position: fixed;
-  background: #dbdbdb;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: fixed;
+    background: #dbdbdb;
 
   `;
 }
@@ -253,7 +255,6 @@ function tickPlayer() {
 }
 
 function collide() {
-  // Bypasses physics block checking if noclip toggle is true
   if (noclip) {
     camera.x = player.x;
     camera.y = player.y;
@@ -356,7 +357,6 @@ function renderPlayer(p) {
   const sideX = Math.sin(p.angle);
   const sideY = -Math.cos(p.angle);
   
-  // Make own player look ghostly if noclip is active
   ctx.save();
   if (p === player && noclip) {
     ctx.globalAlpha = 0.4;
@@ -453,11 +453,9 @@ function renderPlayerUI(p) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   
-  // Render Username tag
   ctx.strokeText(p.name, coord.x, coord.y - baseSize);
   ctx.fillText(p.name, coord.x, coord.y - baseSize);
 
-  // Render visible X & Y coordinates string stack directly under the player tag
   ctx.font = "600 " + resize(0.4) + "px 'Segoe UI', Arial, sans-serif";
   const coordsString = `(${p.x.toFixed(1)}, ${p.y.toFixed(1)})`;
   ctx.strokeText(coordsString, coord.x, coord.y - baseSize + resize(0.5));
@@ -468,7 +466,7 @@ function renderPlayerUI(p) {
   otherChat[p.id] = otherChat[p.id].filter((t) => Date.now() - t.timestamp < 10000);
   const lastMessage = chat[0].timestamp;
   const offset = Math.min(1, (Date.now() - lastMessage) / 200);
-  ctx.font = "600 " + resize(0.6) + "px 'Segoe UI', Arial, sans-serif"; // restore chat size reference
+  ctx.font = "600 " + resize(0.6) + "px 'Segoe UI', Arial, sans-serif"; 
   chat.forEach((message, index) => {
     ctx.globalAlpha = Math.max(0, Math.min(index ? 1 : offset, 1, 50 - (Date.now() - message.timestamp) / 200));
     const y = coord.y - baseSize - resize(0.85 + 0.9 * Math.max(0, index - 1 + offset));
@@ -513,37 +511,22 @@ function renderUI() {
   ctx.fillText("Shift or Ctrl to fast travel. Alt to change your name. N to Noclip.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
   
-  // Performance Indicators Stack Setup
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "right";
   
-  // 1. Total Global Players Label
   ctx.strokeText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 442);
   ctx.fillText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 442);
   
-  // 2. MS Frame Time 
   ctx.strokeText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
   ctx.fillText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
 
-  // 3. FPS
   ctx.strokeText(fps + " fps", canvas.width - 4, canvas.height - 406);
   ctx.fillText(fps + " fps", canvas.width - 4, canvas.height - 406);
 
-  // 4. Speed
   ctx.strokeText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
   ctx.fillText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
-  
-  // Noclip UI Status Tag (rendered on the top left layer boundary corner of the minimap border framework)
-  if (noclip) {
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#e03e41";
-    ctx.strokeText("NOCLIP: ACTIVE", canvas.width - 378, canvas.height - 390);
-    ctx.fillText("NOCLIP: ACTIVE", canvas.width - 378, canvas.height - 390);
-    ctx.textAlign = "right"; // reset back to right default alignment
-  }
 
-  // Glitched text banner layout positioning shift up to clear the indicators
   ctx.lineWidth = 5.5;
   ctx.font = "600 24px 'Segoe UI', Arial, sans-serif";
   ctx.fillStyle = "#ffffff";
@@ -567,6 +550,16 @@ function renderUI() {
   ctx.lineWidth = 4;
   ctx.strokeRect(canvas.width - 378, canvas.height - 378, 370, 370);
   ctx.fillRect(canvas.width - 378, canvas.height - 378, 370, 370);
+  
+  // Noclip circle indicator
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#484848";
+  ctx.fillStyle = noclip ? "#e03e41" : "#8abc3f"; 
+  ctx.beginPath();
+  ctx.arc(canvas.width - 366, canvas.height - 366, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
   for (let x = 0; x < 37; x ++) {
     for (let y = 0; y < 37; y ++) {
       const tile = map[y][x];
@@ -630,13 +623,12 @@ function renderRing() {
 }
 
 function frame() {
-  // Performance measurement engine step
   const now = performance.now();
   frameTimeMs = now - lastFrameTime;
   lastFrameTime = now;
 
   framesThisPeriod++;
-  if (now - lastFpsUpdate >= 500) { // Updates smoothly 2 times per second
+  if (now - lastFpsUpdate >= 500) { 
     fps = Math.round((framesThisPeriod * 1000) / (now - lastFpsUpdate));
     framesThisPeriod = 0;
     lastFpsUpdate = now;
@@ -661,14 +653,18 @@ function frame() {
 }
 
 async function downloadData() {
-  const response = await fetch("https://t4mebdah2ksfasgi-c.uvwx.xyz:8443/2222/status");
-  const json = await response.json();
-  for (let key in json.status) {
-    if (!json.status[key].clients) {
-      delete json.status[key];
+  try {
+    const response = await fetch("https://t4mebdah2ksfasgi-c.uvwx.xyz:8443/2222/status");
+    const json = await response.json();
+    for (let key in json.status) {
+      if (!json.status[key].clients) {
+        delete json.status[key];
+      }
     }
+    mostRecent = { servers: json.status };
+  } catch (err) {
+    console.error("Status fetch failed: ", err);
   }
-  mostRecent = { servers: json.status };
 }
 
 setInterval(downloadData, 15000);
@@ -678,7 +674,7 @@ requestAnimationFrame(frame);
 setInterval(tick, 1000 / 60);
 
 setInterval(() => {
-  if (socket.readyState === WebSocket.OPEN) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: "portals" }));
   }
 }, 2500);
