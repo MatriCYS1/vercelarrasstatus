@@ -47,73 +47,22 @@ const input = document.querySelector("input");
 const player = { x: -12, y: 0, angle: 0, vx: 0, vy: 0, name: localStorage.getItem("x-arrasVerifyName") ?? "unknown" };
 const camera = { x: 0, y: 0, width: 48 };
 
-// Noclip State Variable
-let noclip = false;
-
 const keys = {};
-document.addEventListener("keydown", (ev) => {
-  keys[ev.key.toLowerCase()] = true;
-  
-  // Toggle Noclip when pressing 'N' (only when chat input isn't open/focused)
-  if (ev.key.toLowerCase() === 'n' && document.activeElement !== input) {
-    noclip = !noclip;
-    console.log("Noclip mode:", noclip ? "ENABLED" : "DISABLED");
-  }
-});
+document.addEventListener("keydown", (ev) => keys[ev.key.toLowerCase()] = true);
 document.addEventListener("keyup", (ev) => keys[ev.key.toLowerCase()] = false);
 document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
 });
 
-// 1. Chat listener with safe guard checks
 document.addEventListener("keydown", (ev) => {
-  if (ev.key !== "Enter" || !input) return;
+  if (ev.key !== "Enter") return;
   if (input.hidden) {
     input.hidden = false;
     input.focus();
   } else {
-    const MSG_LIMIT = 80; 
-    let msg = input.value;
-
-    if (msg.length > MSG_LIMIT) {
-      alert(`Message too long! It has been truncated to ${MSG_LIMIT} characters.`);
-      msg = msg.slice(0, MSG_LIMIT);
-    }
-
-    if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: "chat", msg: msg }));
-    }
+    socket.send(JSON.stringify({ type: "chat", msg: input.value }));
     input.hidden = true;
     input.value = "";
-  }
-});
-
-// 2. Alt key listener for changing name with safe checks
-document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Alt" && document.activeElement !== input) {
-    ev.preventDefault(); 
-    
-    const NAME_LIMIT = 16; 
-    let newName = prompt(`Enter your new nickname (Max ${NAME_LIMIT} chars):`, player.name);
-    
-    if (newName !== null) {
-      newName = newName.trim();
-      
-      if (newName.length > NAME_LIMIT) {
-        alert(`Name too long! It will be truncated to ${NAME_LIMIT} characters.`);
-        newName = newName.slice(0, NAME_LIMIT);
-      }
-      
-      if (newName === "") newName = "unknown";
-
-      player.name = newName;
-      localStorage.setItem("x-arrasVerifyName", newName);
-      
-      if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "name", name: newName }));
-      }
-      console.log(`Name successfully changed to: ${newName}`);
-    }
   }
 });
 
@@ -122,26 +71,13 @@ let mostRecent = null;
 
 let currentPortal = null;
 let teleportTime = null;
-
 let teleported = false;
 
 let portals = [];
-
 let spawnTime = Date.now();
 
 let otherPlayers = [];
 let otherChat = {};
-
-let arrasCorruptReplacements = [
-  ["", 0],
-  ["", 4],
-  ["", 8],
-  ["", 12],
-  ["", 16],
-  ["", 20],
-  ["", 24],
-  ["", 28]
-];
 
 // Performance Tracking Variables
 let lastFrameTime = performance.now();
@@ -160,21 +96,13 @@ function connect() {
     socket.send(JSON.stringify({ type: "name", name: localStorage.getItem("x-arrasVerifyName") ?? "unknown" }))
   });
 }
+
 function message(ev) {
   const content = JSON.parse(ev.data);
   if (content.type === "players") {
     player.id = content.ignore;
     delete content.players[content.ignore];
     otherPlayers = Object.values(content.players);
-  }
-  if (content.type === "portals") {
-    const lastPortals = portals.slice();
-    portals = content.portals;
-    lastPortals.forEach((portal) => {
-      const found = portals.find((p) => p.server === portal.server);
-      if (!found) return;
-      found.visualSizeMult = portal.visualSizeMult ?? 1;
-    });
   }
   if (content.type === "chat") {
     otherChat[content.id] ??= [];
@@ -200,7 +128,6 @@ function updateCanvas() {
   canvas.width = dpr * innerWidth;
   canvas.height = dpr * innerHeight;
   canvas.style = `
-  
     left: 0;
     top: 0;
     width: 100vw;
@@ -208,17 +135,7 @@ function updateCanvas() {
     overflow: hidden;
     position: fixed;
     background: #dbdbdb;
-
   `;
-}
-
-function tickPort() {
-  portals.forEach((port) => {
-    port.visualSizeMult ??= 0;
-    port.visualSizeMult *= 0.91;
-    port.visualSizeMult += 0.09;
-    if (port === currentPortal) port.visualSizeMult += 0.07;
-  })
 }
 
 function tickPlayer() {
@@ -233,34 +150,13 @@ function tickPlayer() {
   if (player.x > 111) player.x -= 222;
   if (player.y > 111) player.y -= 222;
   camera.width = 72;
-  currentPortal = null;
-  portals.forEach((portal) => {
-    if (Math.sqrt((portal.x - player.x) ** 2 + (portal.y - player.y) ** 2) < portal.visualSizeMult + 0.4) {
-      currentPortal = portal;
-    }
-  });
-  if (!currentPortal) teleportTime = null;
-  else teleportTime ??= Date.now() + 1e4;
-  arrasCorruptReplacements.forEach((char) => {
-    if (Math.random() < 1 / 1000) (char[0] = "qwertyuiopasdfghjklxcvbnm"[Math.floor(Math.random() * 26)]) && (char[1] = 10);
-    else char[1] --;
-  });
+
   if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: "update", x: player.x, y: player.y, a: player.angle }))
-  }
-  if (teleportTime < Date.now() && teleportTime && !teleported) {
-    location.href = "https://arras.io/#" + currentPortal.server;
-    teleported = true;
   }
 }
 
 function collide() {
-  if (noclip) {
-    camera.x = player.x;
-    camera.y = player.y;
-    return;
-  }
-
   try {
     const cellX = Math.floor((player.x + 111) / 6);
     const cellY = Math.floor((player.y + 111) / 6);
@@ -295,8 +191,8 @@ function collide() {
   camera.x = player.x;
   camera.y = player.y;
 }
+
 function tick() {
-  tickPort();
   tickPlayer();
   collide();
 }
@@ -340,8 +236,9 @@ function renderBackground() {
   }
   ctx.globalAlpha = 1;
 }
-function renderPlayer(p) {
-  const colorId = p.name === "Testing" ? 5 : p.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+
+function renderPlayer(player) {
+  const colorId = player.name === "Testing" ? 5 : player.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
@@ -350,18 +247,12 @@ function renderPlayer(p) {
     ["#fdf380", "#918d5f"],
     ["#b9e87e", "#76885e"]
   ][colorId];
-  const playerCoord = localize(p);
+  const playerCoord = localize(player);
   const baseSize = resize(0.8);
-  const forwardX = Math.cos(p.angle);
-  const forwardY = Math.sin(p.angle);
-  const sideX = Math.sin(p.angle);
-  const sideY = -Math.cos(p.angle);
-  
-  ctx.save();
-  if (p === player && noclip) {
-    ctx.globalAlpha = 0.4;
-  }
-
+  const forwardX = Math.cos(player.angle);
+  const forwardY = Math.sin(player.angle);
+  const sideX = Math.sin(player.angle);
+  const sideY = -Math.cos(player.angle);
   ctx.lineWidth = resize(0.2);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -381,61 +272,10 @@ function renderPlayer(p) {
   ctx.arc(playerCoord.x, playerCoord.y, baseSize, 0, Math.PI * 2);
   ctx.stroke();
   ctx.fill();
-  
-  ctx.restore();
 }
-function renderPortal(portal) {
-  const coord = localize(portal);
-  const baseSize = resize(portal.visualSizeMult);
-  const time = Date.now() + 1000 * portal.id;
-  [
-    ctx.fillStyle,
-    ctx.strokeStyle
-  ] = {
-    w: ["#3ca4cb", "#446d7d"],
-    c: ["#8abc3f", "#637745"],
-    e: ["#e03e41", "#854446"],
-    a: ["#cc669c", "#7d546a"],
-    o: ["#fdf380", "#918d5f"]
-  ][portal.server[0]];
-  ctx.globalAlpha = 0.3;
-  ctx.beginPath();
-  ctx.arc(coord.x, coord.y, baseSize * (1.05 + (Math.cos(time / 280) + 1) * 0.1), 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(coord.x, coord.y, baseSize * (1.08 + (Math.cos(time / 400) + 1) * 0.14), 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(coord.x, coord.y, baseSize * (1.11 + (Math.cos(time / 515) + 1) * 0.18), 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = "#000000";
-  ctx.strokeStyle = "#000000";
-  ctx.beginPath();
-  ctx.arc(coord.x, coord.y, baseSize, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fill();
-}
-function renderPortalUI(portal) {
-  const coord = localize(portal);
-  ctx.fillStyle = "#ffffff";
-  ctx.strokeStyle = "#484848";
-  ctx.lineWidth = resize(0.12);
-  ctx.font = "600 " + resize(0.6) + "px 'Segoe UI', Arial, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.strokeText("#" + portal.server, coord.x, coord.y - resize(portal.visualSizeMult + 0.8));
-  ctx.fillText("#" + portal.server, coord.x, coord.y - resize(portal.visualSizeMult + 0.8));
-  if (portal === currentPortal) {
-    ctx.strokeText("Teleporting in " + Math.ceil((teleportTime - Date.now()) / 1000) + " sec", coord.x, coord.y + resize(portal.visualSizeMult + 0.5));
-    ctx.fillText("Teleporting in " + Math.ceil((teleportTime - Date.now()) / 1000) + " sec", coord.x, coord.y + resize(portal.visualSizeMult + 0.5));
-  }
-  ctx.font = "600 " + resize(0.4) + "px 'Segoe UI', Arial, sans-serif";
-  ctx.strokeText((mostRecent?.servers?.[portal.server]?.clients ?? 0) + " players", coord.x, coord.y - resize(portal.visualSizeMult + 0.35));
-  ctx.fillText((mostRecent?.servers?.[portal.server]?.clients ?? 0) + " players", coord.x, coord.y - resize(portal.visualSizeMult + 0.35));
-}
-function renderPlayerUI(p) {
-  const colorId = p.name === "Testing" ? 5 : p.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+
+function renderPlayerUI(player) {
+  const colorId = player.name === "Testing" ? 5 : player.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   const colors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
@@ -444,7 +284,7 @@ function renderPlayerUI(p) {
     ["#fdf380", "#918d5f"],
     ["#b9e87e", "#76885e"]
   ][colorId];
-  const coord = localize(p);
+  const coord = localize(player);
   const baseSize = resize(1.3);
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "#484848";
@@ -452,21 +292,13 @@ function renderPlayerUI(p) {
   ctx.font = "600 " + resize(0.6) + "px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  
-  ctx.strokeText(p.name, coord.x, coord.y - baseSize);
-  ctx.fillText(p.name, coord.x, coord.y - baseSize);
-
-  ctx.font = "600 " + resize(0.4) + "px 'Segoe UI', Arial, sans-serif";
-  const coordsString = `(${p.x.toFixed(1)}, ${p.y.toFixed(1)})`;
-  ctx.strokeText(coordsString, coord.x, coord.y - baseSize + resize(0.5));
-  ctx.fillText(coordsString, coord.x, coord.y - baseSize + resize(0.5));
-
-  const chat = otherChat[p.id];
+  ctx.strokeText(player.name, coord.x, coord.y - baseSize);
+  ctx.fillText(player.name, coord.x, coord.y - baseSize);
+  const chat = otherChat[player.id];
   if (!chat?.length) return;
-  otherChat[p.id] = otherChat[p.id].filter((t) => Date.now() - t.timestamp < 10000);
+  otherChat[player.id] = otherChat[player.id].filter((t) => Date.now() - t.timestamp < 10000);
   const lastMessage = chat[0].timestamp;
   const offset = Math.min(1, (Date.now() - lastMessage) / 200);
-  ctx.font = "600 " + resize(0.6) + "px 'Segoe UI', Arial, sans-serif"; 
   chat.forEach((message, index) => {
     ctx.globalAlpha = Math.max(0, Math.min(index ? 1 : offset, 1, 50 - (Date.now() - message.timestamp) / 200));
     const y = coord.y - baseSize - resize(0.85 + 0.9 * Math.max(0, index - 1 + offset));
@@ -484,82 +316,45 @@ function renderPlayerUI(p) {
   });
   ctx.globalAlpha = 1;
 }
+
 function renderUI() {
-  const regionText = 
-    player.y < 0 ?
-      player.x < -48 ? "cUS Central" :
-      "eEurope" : 
-      player.x < -48 ? "wUS West" :
-      player.x < 24 ? "oOceania" :
-      "aAsia";
-  const playersHere = Object.values(mostRecent?.servers ?? {}).filter((s) => s.name[0] === regionText[0]).reduce((acc, cur) => acc + cur.clients, 0);
-  const players = Object.values(mostRecent?.servers ?? {}).reduce((acc, cur) => acc + cur.clients, 0);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "#484848";
   ctx.lineWidth = 5;
   ctx.font = "600 22px 'Segoe UI', Arial, sans-serif";
-  ctx.strokeText("You are in", canvas.width / 2, 14);
-  ctx.fillText("You are in", canvas.width / 2, 14);
-  ctx.strokeText(playersHere.toLocaleString() + " players here", canvas.width / 2, 80);
-  ctx.fillText(playersHere.toLocaleString() + " players here", canvas.width / 2, 80);
+  
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
-  ctx.strokeText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
-  ctx.fillText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
-  ctx.strokeText("Shift or Ctrl to fast travel. Alt to change your name. N to Noclip.", canvas.width / 2, canvas.height * 0.6 + 25);
-  ctx.fillText("Shift or Ctrl to fast travel. Alt to change your name. N to Noclip.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
+  ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
+  ctx.strokeText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.fillText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
   
+  // Performance Indicators Stack
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "right";
-  
-  ctx.strokeText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 442);
-  ctx.fillText(players.toLocaleString() + " players", canvas.width - 4, canvas.height - 442);
-  
-  ctx.strokeText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
-  ctx.fillText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
 
-  ctx.strokeText(fps + " fps", canvas.width - 4, canvas.height - 406);
-  ctx.fillText(fps + " fps", canvas.width - 4, canvas.height - 406);
-
+  // 1. Speed (gu/s)
   ctx.strokeText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
   ctx.fillText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
 
-  ctx.lineWidth = 5.5;
-  ctx.font = "600 24px 'Segoe UI', Arial, sans-serif";
-  ctx.fillStyle = "#ffffff";
-  ctx.strokeText(arrasCorruptReplacements.map((char, i) => char[1] <= 0 ? "arras.io"[i] : char[0]).join(""), canvas.width - 4, canvas.height - 465);
-  ctx.fillText(arrasCorruptReplacements.map((char, i) => char[1] <= 0 ? "arras.io"[i] : char[0]).join(""), canvas.width - 4, canvas.height - 465);
-  
-  ctx.lineWidth = 8;
-  ctx.font = "600 36px 'Segoe UI', Arial, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillStyle = {
-    w: ["#3ca4cb", "#446d7d"],
-    c: ["#8abc3f", "#637745"],
-    e: ["#e03e41", "#854446"],
-    a: ["#cc669c", "#7d546a"],
-    o: ["#fdf380", "#918d5f"]
-  }[regionText[0]][0];
-  ctx.strokeText(regionText.slice(1), canvas.width / 2, 47);
-  ctx.fillText(regionText.slice(1), canvas.width / 2, 47);
+  // 2. FPS (16px above gu/s)
+  ctx.strokeText(fps + " fps", canvas.width - 4, canvas.height - 406);
+  ctx.fillText(fps + " fps", canvas.width - 4, canvas.height - 406);
+
+  // 3. MS Frame Time (16px above FPS)
+  ctx.strokeText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
+  ctx.fillText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
+
   ctx.strokeStyle = "#484848";
   ctx.fillStyle = "#dbdbdb90";
   ctx.lineWidth = 4;
   ctx.strokeRect(canvas.width - 378, canvas.height - 378, 370, 370);
   ctx.fillRect(canvas.width - 378, canvas.height - 378, 370, 370);
   
-  // Noclip circle indicator
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "#484848";
-  ctx.fillStyle = noclip ? "#e03e41" : "#8abc3f"; 
-  ctx.beginPath();
-  ctx.arc(canvas.width - 366, canvas.height - 366, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
   for (let x = 0; x < 37; x ++) {
     for (let y = 0; y < 37; y ++) {
       const tile = map[y][x];
@@ -577,6 +372,7 @@ function renderUI() {
       }
     }
   }
+  
   [player, ...otherPlayers].forEach((thisPlayer) => {
     const playerTX = ((thisPlayer.x + 111) / 6);
     const playerTY = ((thisPlayer.y + 111) / 6);
@@ -587,6 +383,7 @@ function renderUI() {
     ctx.fill();
   });
 }
+
 function renderWalls() {
   ctx.fillStyle = "#a4a4ad";
   ctx.strokeStyle = "#6d6d71";
@@ -609,26 +406,15 @@ function renderWalls() {
     }
   }
 }
-function renderRing() {
-  const baseRingSize = teleportTime ? ((teleportTime - Date.now()) / 1250) : 1;
-  const ringSize = baseRingSize ** 4;
-  ctx.fillStyle = "#000000";
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2, Math.sqrt(canvas.width ** 2 + canvas.height ** 2) * ringSize, 0, Math.PI * 2);
-  ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.clip("evenodd");
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.restore();
-}
 
 function frame() {
+  // Update frametime and FPS counters
   const now = performance.now();
   frameTimeMs = now - lastFrameTime;
   lastFrameTime = now;
 
   framesThisPeriod++;
-  if (now - lastFpsUpdate >= 500) { 
+  if (now - lastFpsUpdate >= 500) { // Updates FPS twice per second
     fps = Math.round((framesThisPeriod * 1000) / (now - lastFpsUpdate));
     framesThisPeriod = 0;
     lastFpsUpdate = now;
@@ -636,45 +422,16 @@ function frame() {
 
   updateCanvas();
 
-  if (teleported) return ctx.fillStyle = "#000000" && ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   renderBackground();
-  portals.forEach(renderPortal);
   renderPlayer(player);
   otherPlayers.forEach(renderPlayer);
   renderWalls();
-  portals.forEach(renderPortalUI);
   renderPlayerUI(player);
   otherPlayers.forEach(renderPlayerUI);
   renderUI();
-  renderRing();
 
   requestAnimationFrame(frame);
 }
 
-async function downloadData() {
-  try {
-    const response = await fetch("https://t4mebdah2ksfasgi-c.uvwx.xyz:8443/2222/status");
-    const json = await response.json();
-    for (let key in json.status) {
-      if (!json.status[key].clients) {
-        delete json.status[key];
-      }
-    }
-    mostRecent = { servers: json.status };
-  } catch (err) {
-    console.error("Status fetch failed: ", err);
-  }
-}
-
-setInterval(downloadData, 15000);
-downloadData();
-
 requestAnimationFrame(frame);
 setInterval(tick, 1000 / 60);
-
-setInterval(() => {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ type: "portals" }));
-  }
-}, 2500);
