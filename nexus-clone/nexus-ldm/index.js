@@ -350,7 +350,7 @@ function renderPlayerUI(p) {
   let colorId;
   if (safeName === "Testing") {
     colorId = 5;
-  } else if (safeName === "h#shtag") {
+  } else if (safeName === "desmos") {
     colorId = 6;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
