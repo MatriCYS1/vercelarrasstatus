@@ -54,16 +54,42 @@ document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
 });
 
-// Chat Listener Event (Only runs if a chat input element exists in HTML)
+// Track timestamps of messages sent locally by this client for rate-limiting
+const localChatHistory = [];
+
+// Chat Listener Event with Rate Limiting & Character Bounds Controls
 document.addEventListener("keydown", (ev) => {
   if (ev.key !== "Enter" || !input) return;
   if (input.hidden) {
     input.hidden = false;
     input.focus();
   } else {
-    if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: "chat", msg: input.value }));
+    let messageText = input.value.trim();
+    
+    if (messageText !== "") {
+      const now = Date.now();
+      
+      // Filter out log records older than 5 seconds (5000ms)
+      while (localChatHistory.length > 0 && now - localChatHistory[0] > 5000) {
+        localChatHistory.shift();
+      }
+      
+      // Strict Anti-Spam Check: Max 10 messages per 5s window
+      if (localChatHistory.length >= 10) {
+        console.warn("Chat rate limit exceeded! Max 10 messages every 5 seconds.");
+      } else {
+        // Enforce strict 100 character length payload restriction
+        if (messageText.length > 100) {
+          messageText = messageText.slice(0, 100);
+        }
+        
+        if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "chat", msg: messageText }));
+          localChatHistory.push(now); // Store tracking node
+        }
+      }
     }
+    
     input.hidden = true;
     input.value = "";
   }
@@ -340,7 +366,11 @@ function renderPlayerUI(p) {
   chat.forEach((message, index) => {
     ctx.globalAlpha = Math.max(0, Math.min(index ? 1 : offset, 1, 50 - (Date.now() - message.timestamp) / 200));
     const y = coord.y - baseSize - resize(0.85 + 0.9 * Math.max(0, index - 1 + offset));
-    const width = ctx.measureText(message.message).width;
+    
+    // Ensure text display safe coercion on rendering loop elements
+    const renderedMsg = String(message.message);
+    const width = ctx.measureText(renderedMsg).width;
+    
     ctx.strokeStyle = colors[0] + "80";
     ctx.lineWidth = resize(0.7);
     ctx.beginPath();
@@ -349,8 +379,8 @@ function renderPlayerUI(p) {
     ctx.stroke();
     ctx.strokeStyle = "#484848";
     ctx.lineWidth = resize(0.12);
-    ctx.strokeText(message.message, coord.x, y);
-    ctx.fillText(message.message, coord.x, y);
+    ctx.strokeText(renderedMsg, coord.x, y);
+    ctx.fillText(renderedMsg, coord.x, y);
   });
   ctx.globalAlpha = 1;
 }
@@ -362,14 +392,14 @@ function renderUI() {
   ctx.strokeStyle = "#484848";
   ctx.lineWidth = 5;
   ctx.font = "600 22px 'Segoe UI', Arial, sans-serif";
-      
+        
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
   ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
   ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
   ctx.strokeText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.fillText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
-      
+        
   // Performance Indicators Stack
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
@@ -392,7 +422,7 @@ function renderUI() {
   ctx.lineWidth = 4;
   ctx.strokeRect(canvas.width - 378, canvas.height - 378, 370, 370);
   ctx.fillRect(canvas.width - 378, canvas.height - 378, 370, 370);
-      
+        
   for (let x = 0; x < 37; x ++) {
     for (let y = 0; y < 37; y ++) {
       const tile = map[y][x];
@@ -410,10 +440,8 @@ function renderUI() {
       }
     }
   }
-      
+        
   [player, ...otherPlayers].forEach((thisPlayer) => {
-    // Safeguard lookup coordinates for mini-map dot tracking
-    const safeThisName = String(thisPlayer.name ?? "unknown");
     const playerTX = ((thisPlayer.x + 111) / 6);
     const playerTY = ((thisPlayer.y + 111) / 6);
     ctx.globalAlpha = 1;
