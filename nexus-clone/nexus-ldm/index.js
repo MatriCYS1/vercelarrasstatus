@@ -6,7 +6,7 @@ const map = [
   ".1.ccc.1.....1.eee.1.111111111111111.",
   ".1.ccc.1.....1.eee.1.1.............1.",
   ".1.ccc.1.....1.eee.1.1.!.........!.1.",
-  ".1.....1.....1.....1.1 LIGHT!.......!..1.",
+  ".1.....1.....1.....1.1..!.......!..1.",
   ".111.111.....111.111.1...!.....!...1.",
   "...1.1.........1.1...1....!...!....1.",
   ".111.111.....111.111.1.....!.!.....1.",
@@ -54,53 +54,15 @@ document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
 });
 
-// 1. Chat listener with an added message character limit
 document.addEventListener("keydown", (ev) => {
   if (ev.key !== "Enter") return;
   if (input.hidden) {
     input.hidden = false;
     input.focus();
   } else {
-    const MSG_LIMIT = 80; 
-    let msg = input.value;
-
-    if (msg.length > MSG_LIMIT) {
-      alert(`Message too long! It has been truncated to ${MSG_LIMIT} characters.`);
-      msg = msg.slice(0, MSG_LIMIT);
-    }
-
-    socket.send(JSON.stringify({ type: "chat", msg: msg }));
+    socket.send(JSON.stringify({ type: "chat", msg: input.value }));
     input.hidden = true;
     input.value = "";
-  }
-});
-
-// 2. Alt key listener for changing name with a character limit
-document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Alt" && document.activeElement !== input) {
-    ev.preventDefault(); 
-    
-    const NAME_LIMIT = 16; 
-    let newName = prompt(`Enter your new nickname (Max ${NAME_LIMIT} chars):`, player.name);
-    
-    if (newName !== null) {
-      newName = newName.trim();
-      
-      if (newName.length > NAME_LIMIT) {
-        alert(`Name too long! It will be truncated to ${NAME_LIMIT} characters.`);
-        newName = newName.slice(0, NAME_LIMIT);
-      }
-      
-      if (newName === "") newName = "unknown";
-
-      player.name = newName;
-      localStorage.setItem("x-arrasVerifyName", newName);
-      
-      if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "name", name: newName }));
-      }
-      console.log(`Name successfully changed to: ${newName}`);
-    }
   }
 });
 
@@ -109,11 +71,9 @@ let mostRecent = null;
 
 let currentPortal = null;
 let teleportTime = null;
-
 let teleported = false;
 
 let portals = [];
-
 let spawnTime = Date.now();
 
 let otherPlayers = [];
@@ -129,21 +89,13 @@ function connect() {
     socket.send(JSON.stringify({ type: "name", name: localStorage.getItem("x-arrasVerifyName") ?? "unknown" }))
   });
 }
+
 function message(ev) {
   const content = JSON.parse(ev.data);
   if (content.type === "players") {
     player.id = content.ignore;
     delete content.players[content.ignore];
     otherPlayers = Object.values(content.players);
-  }
-  if (content.type === "portals") {
-    const lastPortals = portals.slice();
-    portals = content.portals;
-    lastPortals.forEach((portal) => {
-      const found = portals.find((p) => p.server === portal.server);
-      if (!found) return;
-      found.visualSizeMult = portal.visualSizeMult ?? 1;
-    });
   }
   if (content.type === "chat") {
     otherChat[content.id] ??= [];
@@ -179,15 +131,6 @@ function updateCanvas() {
   `;
 }
 
-function tickPort() {
-  portals.forEach((port) => {
-    port.visualSizeMult ??= 0;
-    port.visualSizeMult *= 0.91;
-    port.visualSizeMult += 0.09;
-    if (port === currentPortal) port.visualSizeMult += 0.07;
-  })
-}
-
 function tickPlayer() {
   if (document.activeElement !== input) player.vx += (!!(keys.arrowright || keys.d) - !!(keys.arrowleft || keys.a)) * 0.02 * (keys.shift ? 5 : 1);
   if (document.activeElement !== input) player.vy += (!!(keys.arrowdown || keys.s) - !!(keys.arrowup || keys.w)) * 0.02 * (keys.shift ? 5 : 1);
@@ -200,21 +143,9 @@ function tickPlayer() {
   if (player.x > 111) player.x -= 222;
   if (player.y > 111) player.y -= 222;
   camera.width = 72;
-  currentPortal = null;
-  portals.forEach((portal) => {
-    if (Math.sqrt((portal.x - player.x) ** 2 + (portal.y - player.y) ** 2) < portal.visualSizeMult + 0.4) {
-      currentPortal = portal;
-    }
-  });
-  if (!currentPortal) teleportTime = null;
-  else teleportTime ??= Date.now() + 1e4;
 
   if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: "update", x: player.x, y: player.y, a: player.angle }))
-  }
-  if (teleportTime < Date.now() && teleportTime && !teleported) {
-    location.href = "https://arras.io/#" + currentPortal.server;
-    teleported = true;
   }
 }
 
@@ -253,8 +184,8 @@ function collide() {
   camera.x = player.x;
   camera.y = player.y;
 }
+
 function tick() {
-  tickPort();
   tickPlayer();
   collide();
 }
@@ -298,6 +229,7 @@ function renderBackground() {
   }
   ctx.globalAlpha = 1;
 }
+
 function renderPlayer(player) {
   const colorId = player.name === "Testing" ? 5 : player.name.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   const colors = [
@@ -387,10 +319,10 @@ function renderUI() {
   ctx.font = "600 22px 'Segoe UI', Arial, sans-serif";
   
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
-  ctx.strokeText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
-  ctx.fillText("Arrow keys or WASD to move. Enter to send a message.", canvas.width / 2, canvas.height * 0.6);
-  ctx.strokeText("Shift or Ctrl to fast travel. Alt to change your name.", canvas.width / 2, canvas.height * 0.6 + 25);
-  ctx.fillText("Shift or Ctrl to fast travel. Alt to change your name.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
+  ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
+  ctx.strokeText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.fillText("Shift or Ctrl to fast travel.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
   
   ctx.lineWidth = 3;
@@ -404,6 +336,7 @@ function renderUI() {
   ctx.lineWidth = 4;
   ctx.strokeRect(canvas.width - 378, canvas.height - 378, 370, 370);
   ctx.fillRect(canvas.width - 378, canvas.height - 378, 370, 370);
+  
   for (let x = 0; x < 37; x ++) {
     for (let y = 0; y < 37; y ++) {
       const tile = map[y][x];
@@ -421,6 +354,7 @@ function renderUI() {
       }
     }
   }
+  
   [player, ...otherPlayers].forEach((thisPlayer) => {
     const playerTX = ((thisPlayer.x + 111) / 6);
     const playerTY = ((thisPlayer.y + 111) / 6);
@@ -431,6 +365,7 @@ function renderUI() {
     ctx.fill();
   });
 }
+
 function renderWalls() {
   ctx.fillStyle = "#a4a4ad";
   ctx.strokeStyle = "#6d6d71";
@@ -453,23 +388,9 @@ function renderWalls() {
     }
   }
 }
-function renderRing() {
-  const baseRingSize = teleportTime ? ((teleportTime - Date.now()) / 1250) : 1;
-  const ringSize = baseRingSize ** 4;
-  ctx.fillStyle = "#000000";
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(canvas.width / 2, canvas.height / 2, Math.sqrt(canvas.width ** 2 + canvas.height ** 2) * ringSize, 0, Math.PI * 2);
-  ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.clip("evenodd");
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.restore();
-}
 
 function frame() {
   updateCanvas();
-
-  if (teleported) return ctx.fillStyle = "#000000" && ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   renderBackground();
   renderPlayer(player);
@@ -478,30 +399,9 @@ function frame() {
   renderPlayerUI(player);
   otherPlayers.forEach(renderPlayerUI);
   renderUI();
-  renderRing();
 
   requestAnimationFrame(frame);
 }
 
-async function downloadData() {
-  const response = await fetch("https://t4mebdah2ksfasgi-c.uvwx.xyz:8443/2222/status");
-  const json = await response.json();
-  for (let key in json.status) {
-    if (!json.status[key].clients) {
-      delete json.status[key];
-    }
-  }
-  mostRecent = { servers: json.status };
-}
-
-setInterval(downloadData, 15000);
-downloadData();
-
 requestAnimationFrame(frame);
 setInterval(tick, 1000 / 60);
-
-setInterval(() => {
-  if (socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ type: "portals" }));
-  }
-}, 2500);
