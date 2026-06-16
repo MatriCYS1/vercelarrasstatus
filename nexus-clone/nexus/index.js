@@ -54,17 +54,55 @@ document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
 });
 
+// 1. Chat listener with an added message character limit
 document.addEventListener("keydown", (ev) => {
   if (ev.key !== "Enter") return;
   if (input.hidden) {
     input.hidden = false;
     input.focus();
   } else {
-    socket.send(JSON.stringify({ type: "chat", msg: input.value }));
+    const MSG_LIMIT = 80; // <--- CHANGE CHAT CHARACTER LIMIT HERE
+    let msg = input.value;
+
+    if (msg.length > MSG_LIMIT) {
+      alert(`Message too long! It has been truncated to ${MSG_LIMIT} characters.`);
+      msg = msg.slice(0, MSG_LIMIT);
+    }
+
+    socket.send(JSON.stringify({ type: "chat", msg: msg }));
     input.hidden = true;
     input.value = "";
   }
-})
+});
+
+// 2. Alt key listener for changing name with a character limit
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Alt" && document.activeElement !== input) {
+    ev.preventDefault(); // Stop default browser menu popup
+    
+    const NAME_LIMIT = 16; // <--- CHANGE NAME CHARACTER LIMIT HERE
+    let newName = prompt(`Enter your new nickname (Max ${NAME_LIMIT} chars):`, player.name);
+    
+    if (newName !== null) {
+      newName = newName.trim();
+      
+      if (newName.length > NAME_LIMIT) {
+        alert(`Name too long! It will be truncated to ${NAME_LIMIT} characters.`);
+        newName = newName.slice(0, NAME_LIMIT);
+      }
+      
+      if (newName === "") newName = "unknown";
+
+      player.name = newName;
+      localStorage.setItem("x-arrasVerifyName", newName);
+      
+      if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "name", name: newName }));
+      }
+      console.log(`Name successfully changed to: ${newName}`);
+    }
+  }
+});
 
 let datapoints = null;
 let mostRecent = null;
