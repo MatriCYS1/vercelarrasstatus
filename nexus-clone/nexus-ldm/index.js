@@ -226,14 +226,14 @@ function collide() {
           const delty = ry - player.y;
           if (Math.abs(deltx) > 3.8 || Math.abs(delty) > 3.8) continue;
           if (Math.abs(deltx) > Math.abs(delty)) {
-            player.vx *= -1.1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
+            player.vx *= -1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
             if (deltx < 0) {
               player.x = rx + 3.800001;
             } else {
               player.x = rx - 3.800001;
             }
           } else {
-            player.vy *= -1.1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
+            player.vy *= -1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
             if (delty < 0) {
               player.y = ry + 3.800001;
             } else {
