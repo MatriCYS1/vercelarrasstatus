@@ -47,7 +47,6 @@ const input = document.querySelector("input");
 // Custom Color Picker Setup
 const colorPicker = document.createElement("input");
 colorPicker.type = "color";
-// Using opacity/absolute prevents browser rendering quirks that block clicks on display:none elements
 colorPicker.style.position = "absolute";
 colorPicker.style.opacity = "0";
 colorPicker.style.pointerEvents = "none";
@@ -71,25 +70,48 @@ document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
 });
 
+// Helper to decode a smuggled color payload out of raw incoming user strings
+function parseSmuggledName(rawName) {
+  const str = String(rawName ?? "unknown");
+  const idx = str.indexOf("\u200b");
+  if (idx !== -1) {
+    const name = str.substring(0, idx) || "unknown";
+    const colorCode = str.substring(idx + 1);
+    if (colorCode && (colorCode.length === 6 || colorCode.length === 3)) {
+      return { name: name, color: "#" + colorCode };
+    }
+    return { name: name, color: null };
+  }
+  return { name: str, color: null };
+}
+
+// Packages name and color into one string and fires it off to server
+function broadcastProfile() {
+  if (typeof socket === 'undefined' || socket.readyState !== WebSocket.OPEN) return;
+  const baseName = player.name ?? "unknown";
+  const hexColor = (player.customColor ?? "#3ca4cb").replace("#", "");
+  
+  // Combines name + hidden zero-width boundary + raw hex value.
+  // Constrained to 9 name characters so it won't trigger standard 16-character limits on servers.
+  const smuggledName = baseName.slice(0, 9) + "\u200b" + hexColor;
+  
+  socket.send(JSON.stringify({ type: "name", name: smuggledName }));
+}
+
 // Update color state on picker change
 colorPicker.addEventListener("input", (ev) => {
   player.customColor = ev.target.value;
   localStorage.setItem("x-arrasVerifyColor", player.customColor);
-  if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ type: "color", color: player.customColor }));
-  }
+  broadcastProfile();
 });
 
 // Open Color Picker on Backtick (`)
 document.addEventListener("keydown", (ev) => {
-  // ev.code === "Backquote" handles international keyboards much better
   if ((ev.key === "`" || ev.code === "Backquote") && document.activeElement !== input) {
     ev.preventDefault();
     try {
-      // Modern API specifically for programmatic opening
       colorPicker.showPicker();
     } catch (e) {
-      // Fallback for older browsers
       colorPicker.click();
     }
   }
@@ -110,23 +132,20 @@ document.addEventListener("keydown", (ev) => {
     if (messageText !== "") {
       const now = Date.now();
       
-      // Filter out log records older than 5 seconds (5000ms)
       while (localChatHistory.length > 0 && now - localChatHistory[0] > 5000) {
         localChatHistory.shift();
       }
       
-      // Strict Anti-Spam Check: Max 10 messages per 5s window
       if (localChatHistory.length >= 10) {
         console.warn("Chat rate limit exceeded! Max 10 messages every 5 seconds.");
       } else {
-        // Enforce strict 100 character length payload restriction
         if (messageText.length > 100) {
           messageText = messageText.slice(0, 100);
         }
         
         if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ type: "chat", msg: messageText }));
-          localChatHistory.push(now); // Store tracking node
+          localChatHistory.push(now);
         }
       }
     }
@@ -139,7 +158,7 @@ document.addEventListener("keydown", (ev) => {
 // Alt Key Listener Event - Updates profile nickname options
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Alt" && document.activeElement !== input) {
-    ev.preventDefault(); // Blocks default browser menu system activations
+    ev.preventDefault();
     
     const NAME_LIMIT = 16;
     let newName = prompt(`Enter your new nickname (Max ${NAME_LIMIT} characters):`, player.name);
@@ -157,9 +176,7 @@ document.addEventListener("keydown", (ev) => {
       player.name = newName;
       localStorage.setItem("x-arrasVerifyName", newName);
       
-      if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "name", name: newName }));
-      }
+      broadcastProfile();
       console.log(`Name set to: ${newName}`);
     }
   }
@@ -192,10 +209,7 @@ function connect() {
   socket.addEventListener("message", message);
   socket.addEventListener("close", connect);
   socket.addEventListener("open", () => {
-    socket.send(JSON.stringify({ type: "name", name: localStorage.getItem("x-arrasVerifyName") ?? "unknown" }));
-    if (player.customColor) {
-      socket.send(JSON.stringify({ type: "color", color: player.customColor }));
-    }
+    broadcastProfile();
   });
 }
 
@@ -254,8 +268,7 @@ function tickPlayer() {
   camera.width = 72;
 
   if (socket.readyState === WebSocket.OPEN) {
-    // Piggyback the custom color to sync with other players if the server relays the whole object
-    socket.send(JSON.stringify({ type: "update", x: player.x, y: player.y, a: player.angle, color: player.customColor }))
+    socket.send(JSON.stringify({ type: "update", x: player.x, y: player.y, a: player.angle }))
   }
 }
 
@@ -273,14 +286,14 @@ function collide() {
           const delty = ry - player.y;
           if (Math.abs(deltx) > 3.8 || Math.abs(delty) > 3.8) continue;
           if (Math.abs(deltx) > Math.abs(delty)) {
-            player.vx *= -1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
+            player.vx *= -1;
             if (deltx < 0) {
               player.x = rx + 3.800001;
             } else {
               player.x = rx - 3.800001;
             }
           } else {
-            player.vy *= -1; // 🌟 Speed divided by 1 (retains 100% bounce speed)
+            player.vy *= -1;
             if (delty < 0) {
               player.y = ry + 3.800001;
             } else {
@@ -300,7 +313,6 @@ function tick() {
   collide();
 }
 
-// Helper to generate a darker border color for a given hex
 function darkenHex(hex) {
   if (!hex) return "#000000";
   hex = hex.replace('#', '');
@@ -311,23 +323,22 @@ function darkenHex(hex) {
   return "#" + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0');
 }
 
-// Single function to manage colors, keeping the hardcoded checks first
 function getPlayerColors(p) {
-  const safeName = String(p.name ?? "unknown");
+  const parsed = parseSmuggledName(p.name);
+  const safeName = parsed.name;
   
-  // 1. Check Hardcoded Colors
   const defaultColors = [
     ["#3ca4cb", "#446d7d"],
     ["#8abc3f", "#637745"],
     ["#e03e41", "#854446"],
     ["#cc669c", "#7d546a"],
     ["#fdf380", "#918d5f"],
-    ["#b9e87e", "#76885e"], // 5: Testing
-    ["#F199C3", "#a66183"], // 6: desmos
-    ["#000000", "#111111"], // 7: h#shtag
-    ["#00EDFF", "#999999"], // 8: MatriCYS-1 [-1]
-    ["#999999", "#808080"], // 9: of tale
-    ["#7adbba", "#5c8375"]  // 10: Gem Knight 💎
+    ["#b9e87e", "#76885e"],
+    ["#F199C3", "#a66183"],
+    ["#000000", "#111111"],
+    ["#00EDFF", "#999999"],
+    ["#999999", "#808080"],
+    ["#7adbba", "#5c8375"]
   ];
 
   if (safeName === "Testing") return defaultColors[5];
@@ -337,14 +348,12 @@ function getPlayerColors(p) {
   if (safeName === "of tale") return defaultColors[9];
   if (safeName === "Gem Knight 💎") return defaultColors[10];
 
-  // 2. Check Custom Color Picked
-  // Some servers pass back the root color if we send it in update/name. We check .color or .customColor
-  const pickedColor = p.customColor || p.color;
+  // Prioritize color parsed from smuggled payload string first
+  const pickedColor = parsed.color || p.customColor || p.color;
   if (pickedColor) {
     return [pickedColor, darkenHex(pickedColor)];
   }
 
-  // 3. Fallback Random Base Code hash
   const colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   return defaultColors[colorId];
 }
@@ -420,7 +429,8 @@ function renderPlayer(p) {
 }
 
 function renderPlayerUI(p) {
-  const safeName = String(p.name ?? "unknown");
+  const parsed = parseSmuggledName(p.name);
+  const safeName = parsed.name; // Cleans raw data so hex coordinates don't print over player avatars
   const colors = getPlayerColors(p);
 
   const coord = localize(p);
@@ -474,20 +484,16 @@ function renderUI() {
   ctx.fillText("Shift or Ctrl to fast travel. Alt to change name. ` (Backtick) to pick color.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
         
-  // Performance Indicators Stack
   ctx.lineWidth = 3;
   ctx.font = "600 14px 'Segoe UI', Arial, sans-serif";
   ctx.textAlign = "right";
 
-  // 1. Speed (gu/s)
   ctx.strokeText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
   ctx.fillText("Speed: " + (60 * Math.sqrt(player.vx ** 2 + player.vy ** 2)).toFixed(2) + " gu/s", canvas.width - 4, canvas.height - 390);
 
-  // 2. FPS
   ctx.strokeText(fps + " fps", canvas.width - 4, canvas.height - 406);
   ctx.fillText(fps + " fps", canvas.width - 4, canvas.height - 406);
 
-  // 3. MS Frame Time
   ctx.strokeText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
   ctx.fillText(frameTimeMs.toFixed(1) + " ms", canvas.width - 4, canvas.height - 422);
 
