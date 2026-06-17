@@ -44,7 +44,21 @@ const ctx = canvas.getContext("2d");
 
 const input = document.querySelector("input");
 
-const player = { x: -12, y: 0, angle: 0, vx: 0, vy: 0, name: localStorage.getItem("x-arrasVerifyName") ?? "unknown" };
+// Custom Color Picker Setup
+const colorPicker = document.createElement("input");
+colorPicker.type = "color";
+colorPicker.style.display = "none";
+document.body.appendChild(colorPicker);
+
+const player = { 
+  x: -12, 
+  y: 0, 
+  angle: 0, 
+  vx: 0, 
+  vy: 0, 
+  name: localStorage.getItem("x-arrasVerifyName") ?? "unknown",
+  customColor: localStorage.getItem("x-arrasVerifyColor") ?? null
+};
 const camera = { x: 0, y: 0, width: 48 };
 
 const keys = {};
@@ -52,6 +66,23 @@ document.addEventListener("keydown", (ev) => keys[ev.key.toLowerCase()] = true);
 document.addEventListener("keyup", (ev) => keys[ev.key.toLowerCase()] = false);
 document.addEventListener("mousemove", (ev) => {
   player.angle = Math.atan2(ev.clientY - innerHeight / 2, ev.clientX - innerWidth / 2);
+});
+
+// Update color state on picker change
+colorPicker.addEventListener("input", (ev) => {
+  player.customColor = ev.target.value;
+  localStorage.setItem("x-arrasVerifyColor", player.customColor);
+  if (typeof socket !== 'undefined' && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: "color", color: player.customColor }));
+  }
+});
+
+// Open Color Picker on Backtick (`)
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "`" && document.activeElement !== input) {
+    ev.preventDefault();
+    colorPicker.click();
+  }
 });
 
 // Track timestamps of messages sent locally by this client for rate-limiting
@@ -151,7 +182,10 @@ function connect() {
   socket.addEventListener("message", message);
   socket.addEventListener("close", connect);
   socket.addEventListener("open", () => {
-    socket.send(JSON.stringify({ type: "name", name: localStorage.getItem("x-arrasVerifyName") ?? "unknown" }))
+    socket.send(JSON.stringify({ type: "name", name: localStorage.getItem("x-arrasVerifyName") ?? "unknown" }));
+    if (player.customColor) {
+      socket.send(JSON.stringify({ type: "color", color: player.customColor }));
+    }
   });
 }
 
@@ -210,7 +244,8 @@ function tickPlayer() {
   camera.width = 72;
 
   if (socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ type: "update", x: player.x, y: player.y, a: player.angle }))
+    // Piggyback the custom color to sync with other players if the server relays the whole object
+    socket.send(JSON.stringify({ type: "update", x: player.x, y: player.y, a: player.angle, color: player.customColor }))
   }
 }
 
@@ -255,6 +290,55 @@ function tick() {
   collide();
 }
 
+// Helper to generate a darker border color for a given hex
+function darkenHex(hex) {
+  if (!hex) return "#000000";
+  hex = hex.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = Math.max(0, parseInt(hex.substring(0, 2), 16) - 50);
+  const g = Math.max(0, parseInt(hex.substring(2, 4), 16) - 50);
+  const b = Math.max(0, parseInt(hex.substring(4, 6), 16) - 50);
+  return "#" + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0');
+}
+
+// Single function to manage colors, keeping the hardcoded checks first
+function getPlayerColors(p) {
+  const safeName = String(p.name ?? "unknown");
+  
+  // 1. Check Hardcoded Colors
+  const defaultColors = [
+    ["#3ca4cb", "#446d7d"],
+    ["#8abc3f", "#637745"],
+    ["#e03e41", "#854446"],
+    ["#cc669c", "#7d546a"],
+    ["#fdf380", "#918d5f"],
+    ["#b9e87e", "#76885e"], // 5: Testing
+    ["#F199C3", "#a66183"], // 6: desmos
+    ["#000000", "#111111"], // 7: h#shtag
+    ["#00EDFF", "#999999"], // 8: MatriCYS-1 [-1]
+    ["#999999", "#808080"], // 9: of tale
+    ["#7adbba", "#5c8375"]  // 10: Gem Knight 💎
+  ];
+
+  if (safeName === "Testing") return defaultColors[5];
+  if (safeName === "desmos") return defaultColors[6];
+  if (safeName === "h#shtag") return defaultColors[7];
+  if (safeName === "MatriCYS-1 [-1]") return defaultColors[8];
+  if (safeName === "of tale") return defaultColors[9];
+  if (safeName === "Gem Knight 💎") return defaultColors[10];
+
+  // 2. Check Custom Color Picked
+  // Some servers pass back the root color if we send it in update/name. We check .color or .customColor
+  const pickedColor = p.customColor || p.color;
+  if (pickedColor) {
+    return [pickedColor, darkenHex(pickedColor)];
+  }
+
+  // 3. Fallback Random Base Code hash
+  const colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
+  return defaultColors[colorId];
+}
+
 function renderBackground() {
   ctx.lineWidth = resize(0.03);
   ctx.globalAlpha = 0.06;
@@ -296,38 +380,7 @@ function renderBackground() {
 }
 
 function renderPlayer(p) {
-  const safeName = String(p.name ?? "unknown");
-  
-  let colorId;
-  if (safeName === "Testing") {
-    colorId = 5;
-  } else if (safeName === "desmos") {
-    colorId = 6;
-     } else if (safeName === "h#shtag") {
-    colorId = 7;
-    } else if (safeName === "MatriCYS-1 [-1]") {
-    colorId = 8;
-      } else if (safeName === "of tale") {
-    colorId = 9;
-          } else if (safeName === "Gem Knight 💎") {
-    colorId = 10;
-  } else {
-    colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
-  }
-  
-  const colors = [
-    ["#3ca4cb", "#446d7d"],
-    ["#8abc3f", "#637745"],
-    ["#e03e41", "#854446"],
-    ["#cc669c", "#7d546a"],
-    ["#fdf380", "#918d5f"],
-    ["#b9e87e", "#76885e"],
-    ["#F199C3", "#a66183"],
-    ["#000000", "#111111"],
-    ["#00EDFF", "#999999"],
-    ["#999999", "#808080"],
-    ["#7adbba", "#5c8375"]
-  ][colorId];
+  const colors = getPlayerColors(p);
   
   const playerCoord = localize(p);
   const baseSize = resize(0.8);
@@ -358,37 +411,7 @@ function renderPlayer(p) {
 
 function renderPlayerUI(p) {
   const safeName = String(p.name ?? "unknown");
-
-  let colorId;
-  if (safeName === "Testing") {
-    colorId = 5;
-  } else if (safeName === "desmos") {
-    colorId = 6;
-      } else if (safeName === "h#shtag") {
-    colorId = 7;
-    } else if (safeName === "MatriCYS-1 [-1]") {
-    colorId = 8;
-      } else if (safeName === "of tale") {
-    colorId = 9;
-              } else if (safeName === "Gem Knight 💎") {
-    colorId = 10;
-  } else {
-    colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
-  }
-
-  const colors = [
-    ["#3ca4cb", "#446d7d"],
-    ["#8abc3f", "#637745"],
-    ["#e03e41", "#854446"],
-    ["#cc669c", "#7d546a"],
-    ["#fdf380", "#918d5f"],
-    ["#b9e87e", "#76885e"],
-    ["#F199C3", "#a66183"],
-    ["#000000", "#111111"],
-    ["#00EDFF", "#999999"],
-    ["#999999", "#808080"],
-    ["#7adbba", "#5c8375"]
-  ][colorId];
+  const colors = getPlayerColors(p);
 
   const coord = localize(p);
   const baseSize = resize(1.3);
@@ -437,8 +460,8 @@ function renderUI() {
   ctx.globalAlpha = Math.max(0, Math.min(1, 2 - (Date.now() - spawnTime) / 4000));
   ctx.strokeText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
   ctx.fillText("Arrow keys or WASD to move.", canvas.width / 2, canvas.height * 0.6);
-  ctx.strokeText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
-  ctx.fillText("Shift or Ctrl to fast travel. Alt to change name.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.strokeText("Shift or Ctrl to fast travel. Alt to change name. ` (Backtick) to pick color.", canvas.width / 2, canvas.height * 0.6 + 25);
+  ctx.fillText("Shift or Ctrl to fast travel. Alt to change name. ` (Backtick) to pick color.", canvas.width / 2, canvas.height * 0.6 + 25);
   ctx.globalAlpha = 1;
         
   // Performance Indicators Stack
