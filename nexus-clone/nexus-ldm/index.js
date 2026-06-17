@@ -438,7 +438,7 @@ function collide() {
 
           if (Math.abs(deltx) > Math.abs(delty)) {
 
-            player.vx *= -2; // 🌟 Speed divided by 1 (retains 100% bounce speed)
+            player.vx *= -1.001; // 🌟 Speed divided by 1 (retains 100% bounce speed)
 
             if (deltx < 0) {
 
@@ -452,7 +452,7 @@ function collide() {
 
           } else {
 
-            player.vy *= -2; // 🌟 Speed divided by 1 (retains 100% bounce speed)
+            player.vy *= -1.001; // 🌟 Speed divided by 1 (retains 100% bounce speed)
 
             if (delty < 0) {
 
