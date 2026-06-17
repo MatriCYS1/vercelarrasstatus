@@ -47,7 +47,10 @@ const input = document.querySelector("input");
 // Custom Color Picker Setup
 const colorPicker = document.createElement("input");
 colorPicker.type = "color";
-colorPicker.style.display = "none";
+// Using opacity/absolute prevents browser rendering quirks that block clicks on display:none elements
+colorPicker.style.position = "absolute";
+colorPicker.style.opacity = "0";
+colorPicker.style.pointerEvents = "none";
 document.body.appendChild(colorPicker);
 
 const player = { 
@@ -79,9 +82,16 @@ colorPicker.addEventListener("input", (ev) => {
 
 // Open Color Picker on Backtick (`)
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "`" && document.activeElement !== input) {
+  // ev.code === "Backquote" handles international keyboards much better
+  if ((ev.key === "`" || ev.code === "Backquote") && document.activeElement !== input) {
     ev.preventDefault();
-    colorPicker.click();
+    try {
+      // Modern API specifically for programmatic opening
+      colorPicker.showPicker();
+    } catch (e) {
+      // Fallback for older browsers
+      colorPicker.click();
+    }
   }
 });
 
