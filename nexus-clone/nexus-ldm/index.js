@@ -307,6 +307,8 @@ function renderPlayer(p) {
     colorId = 7;
     } else if (safeName === "MatriCYS-1 [-1]") {
     colorId = 8;
+      } else if (safeName === "of tale") {
+    colorId = 9;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   }
@@ -320,7 +322,8 @@ function renderPlayer(p) {
     ["#b9e87e", "#76885e"],
     ["#F199C3", "#a66183"],
     ["#000000", "#111111"],
-    ["#00EDFF", "#999999"]
+    ["#00EDFF", "#999999"],
+    ["#808080", "#999999"]
   ][colorId];
   
   const playerCoord = localize(p);
@@ -362,6 +365,8 @@ function renderPlayerUI(p) {
     colorId = 7;
     } else if (safeName === "MatriCYS-1 [-1]") {
     colorId = 8;
+      } else if (safeName === "of tale") {
+    colorId = 9;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   }
@@ -375,7 +380,8 @@ function renderPlayerUI(p) {
     ["#b9e87e", "#76885e"],
     ["#F199C3", "#a66183"],
     ["#000000", "#111111"],
-    ["#00EDFF", "#999999"]
+    ["#00EDFF", "#999999"],
+    ["#808080", "#999999"]
   ][colorId];
 
   const coord = localize(p);
