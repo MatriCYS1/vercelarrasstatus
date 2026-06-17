@@ -309,6 +309,8 @@ function renderPlayer(p) {
     colorId = 8;
       } else if (safeName === "of tale") {
     colorId = 9;
+          } else if (safeName === "Gem Knight 💎") {
+    colorId = 10;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   }
@@ -323,7 +325,8 @@ function renderPlayer(p) {
     ["#F199C3", "#a66183"],
     ["#000000", "#111111"],
     ["#00EDFF", "#999999"],
-    ["#999999", "#808080"]
+    ["#999999", "#808080"],
+    ["#5c8375", "#7adbba"]
   ][colorId];
   
   const playerCoord = localize(p);
@@ -367,6 +370,8 @@ function renderPlayerUI(p) {
     colorId = 8;
       } else if (safeName === "of tale") {
     colorId = 9;
+              } else if (safeName === "Gem Knight 💎") {
+    colorId = 10;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   }
@@ -381,7 +386,8 @@ function renderPlayerUI(p) {
     ["#F199C3", "#a66183"],
     ["#000000", "#111111"],
     ["#00EDFF", "#999999"],
-    ["#999999", "#808080"]
+    ["#999999", "#808080"],
+    ["#5c8375", "#7adbba"]
   ][colorId];
 
   const coord = localize(p);
