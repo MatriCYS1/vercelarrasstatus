@@ -303,6 +303,8 @@ function renderPlayer(p) {
     colorId = 5;
   } else if (safeName === "desmos") {
     colorId = 6;
+     } else if (safeName === "h#shtag") {
+    colorId = 7;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   }
@@ -314,7 +316,8 @@ function renderPlayer(p) {
     ["#cc669c", "#7d546a"],
     ["#fdf380", "#918d5f"],
     ["#b9e87e", "#76885e"],
-    ["#F199C3", "#a66183"]
+    ["#F199C3", "#a66183"],
+    ["#000000", "#111111"]
   ][colorId];
   
   const playerCoord = localize(p);
@@ -352,6 +355,8 @@ function renderPlayerUI(p) {
     colorId = 5;
   } else if (safeName === "desmos") {
     colorId = 6;
+      } else if (safeName === "h#shtag") {
+    colorId = 7;
   } else {
     colorId = safeName.split("").reduce((acc, cur) => acc + cur.codePointAt(0), 0) % 5;
   }
@@ -363,7 +368,8 @@ function renderPlayerUI(p) {
     ["#cc669c", "#7d546a"],
     ["#fdf380", "#918d5f"],
     ["#b9e87e", "#76885e"],
-    ["#F199C3", "#a66183"]
+    ["#F199C3", "#a66183"],
+    ["#000000", "#111111"]
   ][colorId];
 
   const coord = localize(p);
