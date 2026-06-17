@@ -326,7 +326,7 @@ function renderPlayer(p) {
     ["#000000", "#111111"],
     ["#00EDFF", "#999999"],
     ["#999999", "#808080"],
-    ["#5c8375", "#7adbba"]
+    ["#7adbba", "#5c8375"]
   ][colorId];
   
   const playerCoord = localize(p);
@@ -387,7 +387,7 @@ function renderPlayerUI(p) {
     ["#000000", "#111111"],
     ["#00EDFF", "#999999"],
     ["#999999", "#808080"],
-    ["#5c8375", "#7adbba"]
+    ["#7adbba", "#5c8375"]
   ][colorId];
 
   const coord = localize(p);
