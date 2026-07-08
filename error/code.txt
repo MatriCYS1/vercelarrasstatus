@@ -2,4 +2,4 @@ function msg(message) {
   document.getElementById('chatInput').value = message;
   sendChat()
 }
-msg(verifyCode)
+msg("Message")
