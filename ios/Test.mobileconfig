@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+    </array>
+
+    <key>PayloadDisplayName</key>
+    <string>iOS 5 Test</string>
+
+    <key>PayloadIdentifier</key>
+    <string>app.iostatus.testprofile</string>
+
+    <key>PayloadOrganization</key>
+    <string>Test</string>
+
+    <key>PayloadType</key>
+    <string>Configuration</string>
+
+    <key>PayloadUUID</key>
+    <string>6F7B8D32-3D4C-4B92-9F7E-1A2C5E8B6D40</string>
+
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>
