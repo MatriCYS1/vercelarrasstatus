@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>FullScreen</key>
+            <false/>
+
+            <key>IconIsPrecomposed</key>
+            <false/>
+
+            <key>Label</key>
+            <string>Test</string>
+
+            <key>PayloadDescription</key>
+            <string>iOS 5 test</string>
+
+            <key>PayloadDisplayName</key>
+            <string>Test</string>
+
+            <key>PayloadIdentifier</key>
+            <string>app.iostatus.testprofile.webclip</string>
+
+            <key>PayloadOrganization</key>
+            <string>Test</string>
+
+            <key>PayloadType</key>
+            <string>com.apple.webClip.managed</string>
+
+            <key>PayloadUUID</key>
+            <string>2A4B7C91-6E3D-48F2-A105-9D7C3B8E2F64</string>
+
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+
+            <key>URL</key>
+            <string>https://iostatus.vercel.app/</string>
+        </dict>
+    </array>
+
+    <key>PayloadDescription</key>
+    <string>test for iOS 5.</string>
+
+    <key>PayloadDisplayName</key>
+    <string> iOS 5 Test</string>
+
+    <key>PayloadIdentifier</key>
+    <string>app.iostatus.testprofile</string>
+
+    <key>PayloadOrganization</key>
+    <string>Test</string>
+
+    <key>PayloadType</key>
+    <string>Configuration</string>
+
+    <key>PayloadUUID</key>
+    <string>7E1C5A42-9B63-4D87-A0F5-2C8E6B314D79</string>
+
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>
