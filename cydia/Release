@@ -3,6 +3,6 @@ Label: probably useful debs.
 Suite: Stable
 Version: 1.0
 Codename: ios5
-Architectures iphoneos-arm
+Architectures: iphoneos-arm
 Components: main
 Description: Most these took ages to find and may not be safe. Use at your own risk. If any are copyrighted all rights to thier respective owners.
