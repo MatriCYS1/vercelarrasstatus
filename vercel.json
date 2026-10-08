@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/cydia/./Packages.gz",
+      "destination": "/cydia/Packages.gz"
+    },
+    {
+      "source": "/cydia/./Packages.bz2",
+      "destination": "/cydia/Packages.bz2"
+    },
+    {
+      "source": "/cydia/./Packages",
+      "destination": "/cydia/Packages"
+    },
+    {
+      "source": "/cydia/./Release",
+      "destination": "/cydia/Release"
+    }
+  ]
+}
